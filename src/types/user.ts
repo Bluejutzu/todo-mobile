@@ -1,9 +1,10 @@
 import type { AIConfig } from './ai';
 import type { PermissionStatus } from './permissions';
+import type { ThemeName } from '../theme/colors';
 
 export interface UserPreferences {
   name: string;
-  theme: 'light' | 'dark' | 'auto';
+  theme: ThemeName;
   onboardingCompleted: boolean;
   notificationsEnabled: boolean;
 

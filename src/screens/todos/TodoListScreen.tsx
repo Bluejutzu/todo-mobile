@@ -1,5 +1,19 @@
-import React, { useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+  Share,
+  Alert,
+  ActivityIndicator,
+  Modal,
+  Pressable,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { TodoItem } from '../../components/todo/TodoItem';
 import { useUserStore } from '../../stores/userStore';
 import { getThemeColors } from '../../theme/colors';
@@ -9,7 +23,6 @@ import { typography } from '../../theme/typography';
 import { TodoModal } from '../../components/todo/TodoModal';
 import { TodoActionSheet } from '../../components/todo/TodoActionSheet';
 import type { Todo } from '../../types/todo';
-import { Share, Alert } from 'react-native';
 import { useTodoStore } from '../../stores/todoStore';
 
 export function TodoListScreen() {
@@ -23,10 +36,10 @@ export function TodoListScreen() {
     loadTodos();
   }, []);
 
-  const [showAddModal, setShowAddModal] = React.useState(false);
-  const [showActionSheet, setShowActionSheet] = React.useState(false);
-  const [editingTodo, setEditingTodo] = React.useState<Todo | undefined>(undefined);
-  const [selectedTodo, setSelectedTodo] = React.useState<Todo | undefined>(undefined);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showActionSheet, setShowActionSheet] = useState(false);
+  const [editingTodo, setEditingTodo] = useState<Todo | undefined>(undefined);
+  const [selectedTodo, setSelectedTodo] = useState<Todo | undefined>(undefined);
 
   const handleAddTodo = () => {
     setEditingTodo(undefined);
@@ -105,10 +118,88 @@ export function TodoListScreen() {
   const activeTodos = todos.filter(t => !t.completed);
   const completedTodos = todos.filter(t => t.completed);
 
+  const insets = useSafeAreaInsets();
+  const [showSyncTooltip, setShowSyncTooltip] = useState(false);
+  const syncStatus = useTodoStore(state => state.syncStatus);
+  const lastSyncTime = useTodoStore(state => state.lastSyncTime);
+  const pendingCount = useTodoStore(state => state.pendingCount);
+
+  const getSyncIcon = () => {
+    switch (syncStatus) {
+      case 'synced':
+        return 'cloud-done-outline';
+      case 'syncing':
+        return 'sync-outline';
+      case 'offline':
+        return 'cloud-offline-outline';
+      case 'error':
+        return 'alert-circle-outline';
+      default:
+        return 'cloud-outline';
+    }
+  };
+
+  const getSyncColor = () => {
+    switch (syncStatus) {
+      case 'synced':
+        return themeColors.success;
+      case 'syncing':
+        return themeColors.primary;
+      case 'offline':
+        return themeColors.textSecondary;
+      case 'error':
+        return themeColors.error;
+      default:
+        return themeColors.textSecondary;
+    }
+  };
+
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: themeColors.background, paddingTop: insets.top },
+      ]}
+    >
+      <Modal
+        transparent
+        visible={showSyncTooltip}
+        animationType="fade"
+        onRequestClose={() => setShowSyncTooltip(false)}
+      >
+        <Pressable style={styles.tooltipOverlay} onPress={() => setShowSyncTooltip(false)}>
+          <View
+            style={[
+              styles.tooltipContent,
+              { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+            ]}
+          >
+            <Text style={[styles.tooltipTitle, { color: themeColors.text }]}>Sync Status</Text>
+            <View style={styles.tooltipRow}>
+              <Ionicons name={getSyncIcon()} size={20} color={getSyncColor()} />
+              <Text style={[styles.tooltipText, { color: themeColors.text }]}>
+                {syncStatus.charAt(0).toUpperCase() + syncStatus.slice(1)}
+              </Text>
+            </View>
+            {pendingCount > 0 && (
+              <Text style={[styles.tooltipDetail, { color: themeColors.textSecondary }]}>
+                {pendingCount} item{pendingCount !== 1 ? 's' : ''} pending
+              </Text>
+            )}
+            <Text style={[styles.tooltipDetail, { color: themeColors.textSecondary }]}>
+              Last sync: {lastSyncTime ? lastSyncTime.toLocaleTimeString() : 'Never'}
+            </Text>
+          </View>
+        </Pressable>
+      </Modal>
+
       <View style={styles.header}>
-        <Text style={[styles.title, { color: themeColors.text }]}>My Todos</Text>
+        <View style={styles.headerTop}>
+          <Text style={[styles.title, { color: themeColors.text }]}>My Todos</Text>
+          <TouchableOpacity onPress={() => setShowSyncTooltip(true)} style={styles.syncButton}>
+            <Ionicons name={getSyncIcon()} size={24} color={getSyncColor()} />
+          </TouchableOpacity>
+        </View>
         <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
           {activeTodos.length} active, {completedTodos.length} completed
         </Text>
@@ -164,6 +255,24 @@ export function TodoListScreen() {
         onShare={handleShareTodo}
         onTogglePriority={handleTogglePriority}
       />
+      {/* Bottom Sync Progress */}
+      {(syncStatus === 'syncing' || pendingCount > 0) && (
+        <View
+          style={[
+            styles.bottomProgress,
+            { backgroundColor: themeColors.surface, borderTopColor: themeColors.border },
+          ]}
+        >
+          <Text style={[styles.bottomProgressText, { color: themeColors.textSecondary }]}>
+            {syncStatus === 'syncing'
+              ? 'Syncing...'
+              : `${pendingCount} item${pendingCount !== 1 ? 's' : ''} waiting to sync`}
+          </Text>
+          {syncStatus === 'syncing' && (
+            <ActivityIndicator size="small" color={themeColors.primary} style={styles.loader} />
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -176,9 +285,65 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingTop: spacing.xl,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
   title: {
     ...typography.h1,
+  },
+  syncButton: {
+    padding: 8,
+  },
+  tooltipOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tooltipContent: {
+    padding: spacing.lg,
+    borderRadius: 12,
+    borderWidth: 1,
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  tooltipTitle: {
+    ...typography.h3,
+    marginBottom: spacing.sm,
+  },
+  tooltipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     marginBottom: spacing.xs,
+  },
+  tooltipText: {
+    ...typography.body,
+    fontWeight: '600',
+  },
+  tooltipDetail: {
+    ...typography.bodySmall,
+    marginTop: 4,
+  },
+  bottomProgress: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.sm,
+    borderTopWidth: 1,
+  },
+  bottomProgressText: {
+    ...typography.bodySmall,
+  },
+  loader: {
+    marginLeft: 8,
   },
   subtitle: {
     ...typography.bodySmall,

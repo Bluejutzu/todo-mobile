@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -15,10 +14,11 @@ import { useUserStore } from '../../stores/userStore';
 import { getThemeColors } from '../../theme/colors';
 import { storage } from '../../services/storage';
 import * as WebBrowser from 'expo-web-browser';
+import { Ionicons } from '@expo/vector-icons';
 
 WebBrowser.maybeCompleteAuthSession();
 
-export async function AuthScreen() {
+export function AuthScreen() {
   const { isSignedIn } = useAuth();
   const { signIn, setActive: setSignInActive, isLoaded: isSignInLoaded } = useSignIn();
   const { signUp, isLoaded: isSignUpLoaded } = useSignUp();
@@ -27,6 +27,11 @@ export async function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  const [resetPasswordEmail, setResetPasswordEmail] = useState('');
+  const [resetPasswordCode, setResetPasswordCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [resetStep, setResetStep] = useState<'email' | 'code'>('email');
   const [loading, setLoading] = useState(false);
 
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
@@ -100,6 +105,48 @@ export async function AuthScreen() {
     }
   };
 
+  const onForgotPasswordPress = async () => {
+    if (!isSignInLoaded) return;
+    setLoading(true);
+    try {
+      await signIn.create({
+        strategy: 'reset_password_email_code',
+        identifier: resetPasswordEmail,
+      });
+      setResetStep('code');
+      Alert.alert('Success', 'Reset code sent to your email');
+    } catch (err: any) {
+      Alert.alert('Error', err.errors?.[0]?.message || 'Failed to send reset code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onResetPasswordPress = async () => {
+    if (!isSignInLoaded) return;
+    setLoading(true);
+    try {
+      const result = await signIn.attemptFirstFactor({
+        strategy: 'reset_password_email_code',
+        code: resetPasswordCode,
+        password: newPassword,
+      });
+
+      if (result.status === 'complete') {
+        await setSignInActive({ session: result.createdSessionId });
+        setShowResetDialog(false);
+        Alert.alert('Success', 'Password reset successfully!');
+      } else {
+        console.log(result);
+        Alert.alert('Error', 'Failed to reset password. Please check the code and try again.');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', err.errors?.[0]?.message || 'Failed to reset password');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.content}>
@@ -145,15 +192,28 @@ export async function AuthScreen() {
             secureTextEntry
           />
 
+          {!isSignUp && (
+            <TouchableOpacity
+              style={styles.forgotPasswordButton}
+              onPress={() => setShowResetDialog(true)}
+            >
+              <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
+                Forgot Password?
+              </Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={[styles.button, { backgroundColor: colors.primary }]}
             onPress={isSignUp ? onSignUpPress : onSignInPress}
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.onPrimary} />
             ) : (
-              <Text style={styles.buttonText}>{isSignUp ? 'Sign Up' : 'Sign In'}</Text>
+              <Text style={[styles.buttonText, { color: colors.onPrimary }]}>
+                {isSignUp ? 'Sign Up' : 'Sign In'}
+              </Text>
             )}
           </TouchableOpacity>
 
@@ -171,6 +231,7 @@ export async function AuthScreen() {
             onPress={() => onSelectOAuth('oauth_google')}
             disabled={loading}
           >
+            <Ionicons name="logo-google" size={24} color={colors.text} />
             <Text style={[styles.socialButtonText, { color: colors.text }]}>
               Continue with Google
             </Text>
@@ -184,6 +245,7 @@ export async function AuthScreen() {
             onPress={() => onSelectOAuth('oauth_apple')}
             disabled={loading}
           >
+            <Ionicons name="logo-apple" size={24} color={colors.text} />
             <Text style={[styles.socialButtonText, { color: colors.text }]}>
               Continue with Apple
             </Text>
@@ -195,6 +257,124 @@ export async function AuthScreen() {
             {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
           </Text>
         </TouchableOpacity>
+
+        {showResetDialog && (
+          <View style={styles.dialogOverlay}>
+            <View style={[styles.dialogContainer, { backgroundColor: colors.surface }]}>
+              <Text style={[styles.dialogTitle, { color: colors.text }]}>Reset Password</Text>
+
+              {resetStep === 'email' ? (
+                <>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.dialogInput,
+                      {
+                        backgroundColor: colors.background,
+                        color: colors.text,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    placeholder="Enter your email"
+                    placeholderTextColor={colors.textSecondary}
+                    value={resetPasswordEmail}
+                    onChangeText={setResetPasswordEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                  />
+                  <View style={styles.dialogButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.dialogButton,
+                        styles.dialogButtonOutline,
+                        { borderColor: colors.border },
+                      ]}
+                      onPress={() => setShowResetDialog(false)}
+                    >
+                      <Text style={[styles.dialogButtonText, { color: colors.text }]}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.dialogButton, { backgroundColor: colors.primary }]}
+                      onPress={onForgotPasswordPress}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <ActivityIndicator color={colors.onPrimary} />
+                      ) : (
+                        <Text style={[styles.dialogButtonText, { color: colors.onPrimary }]}>
+                          Send Code
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.dialogInput,
+                      {
+                        backgroundColor: colors.background,
+                        color: colors.text,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    placeholder="Reset Code"
+                    placeholderTextColor={colors.textSecondary}
+                    value={resetPasswordCode}
+                    onChangeText={setResetPasswordCode}
+                    keyboardType="number-pad"
+                  />
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.dialogInput,
+                      {
+                        backgroundColor: colors.background,
+                        color: colors.text,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    placeholder="New Password"
+                    placeholderTextColor={colors.textSecondary}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    secureTextEntry
+                  />
+                  <View style={styles.dialogButtons}>
+                    <TouchableOpacity
+                      style={[
+                        styles.dialogButton,
+                        styles.dialogButtonOutline,
+                        { borderColor: colors.border },
+                      ]}
+                      onPress={() => {
+                        setResetStep('email');
+                        setShowResetDialog(false);
+                      }}
+                    >
+                      <Text style={[styles.dialogButtonText, { color: colors.text }]}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.dialogButton, { backgroundColor: colors.primary }]}
+                      onPress={onResetPasswordPress}
+                      disabled={loading}
+                    >
+                      {loading ? (
+                        <ActivityIndicator color={colors.onPrimary} />
+                      ) : (
+                        <Text style={[styles.dialogButtonText, { color: colors.onPrimary }]}>
+                          Reset Password
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </View>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -238,7 +418,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   buttonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -259,8 +438,10 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 12,
     borderWidth: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
   },
   socialButtonText: {
     fontSize: 16,
@@ -272,5 +453,57 @@ const styles = StyleSheet.create({
   },
   switchText: {
     fontSize: 14,
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 8,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  dialogOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  dialogContainer: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 16,
+    padding: 24,
+  },
+  dialogTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 24,
+  },
+  dialogButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  dialogButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dialogButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  dialogInput: {
+    marginBottom: 16,
+  },
+  dialogButtonOutline: {
+    borderWidth: 1,
   },
 });

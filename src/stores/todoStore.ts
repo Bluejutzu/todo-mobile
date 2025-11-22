@@ -1,13 +1,18 @@
 import { create } from 'zustand';
 import uuid from 'react-native-uuid';
 import type { Todo } from '../types/todo';
-import { storage } from '../services/storage';
+import { storage, SyncStatus } from '../services/storage';
 
 interface TodoStore {
   todos: Todo[];
   loading: boolean;
+  getToken?: () => Promise<string | null>; // Clerk token getter
+  syncStatus: SyncStatus;
+  lastSyncTime: Date | null;
+  pendingCount: number;
 
   // Actions
+  setTokenGetter: (getToken: () => Promise<string | null>) => void;
   loadTodos: () => Promise<void>;
   addTodo: (todoData: Partial<Todo>) => Promise<void>;
   updateTodo: (id: string, updates: Partial<Todo>) => Promise<void>;
@@ -19,10 +24,23 @@ interface TodoStore {
 export const useTodoStore = create<TodoStore>((set, get) => ({
   todos: [],
   loading: false,
+  getToken: undefined,
+
+  syncStatus: 'offline' as SyncStatus,
+  lastSyncTime: null as Date | null,
+  pendingCount: 0,
+
+  setTokenGetter: (getToken: () => Promise<string | null>) => {
+    set({ getToken });
+    // Subscribe to storage sync status
+    storage.subscribe((status, lastSyncTime, pendingCount) => {
+      set({ syncStatus: status, lastSyncTime, pendingCount });
+    });
+  },
 
   loadTodos: async () => {
     set({ loading: true });
-    const todos = await storage.getTodos();
+    const todos = await storage.getTodos(get().getToken);
     set({ todos, loading: false });
   },
 
@@ -45,7 +63,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
 
     const todos = [...get().todos, newTodo];
     set({ todos });
-    await storage.saveTodos(todos);
+    await storage.saveTodos(todos, get().getToken);
   },
 
   updateTodo: async (id: string, updates: Partial<Todo>) => {
@@ -53,13 +71,13 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       todo.id === id ? { ...todo, ...updates, updatedAt: new Date() } : todo
     );
     set({ todos });
-    await storage.saveTodos(todos);
+    await storage.saveTodos(todos, get().getToken);
   },
 
   deleteTodo: async (id: string) => {
     const todos = get().todos.filter(todo => todo.id !== id);
     set({ todos });
-    await storage.saveTodos(todos);
+    await storage.saveTodos(todos, get().getToken);
   },
 
   toggleComplete: async (id: string) => {
@@ -74,7 +92,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         : todo
     );
     set({ todos });
-    await storage.saveTodos(todos);
+    await storage.saveTodos(todos, get().getToken);
   },
 
   duplicateTodo: async (id: string) => {
@@ -93,6 +111,6 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
 
     const todos = [...get().todos, duplicate];
     set({ todos });
-    await storage.saveTodos(todos);
+    await storage.saveTodos(todos, get().getToken);
   },
 }));

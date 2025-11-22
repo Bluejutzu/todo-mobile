@@ -11,7 +11,9 @@ export type OnboardingStackParamList = {
 
 export type MainTabParamList = {
   Todos: undefined;
+  Calendar: undefined;
   Settings: undefined;
+  Account: undefined;
   AccountManagement: undefined;
 };
 

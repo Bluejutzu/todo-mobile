@@ -72,7 +72,7 @@ export function StorageSelectionScreen() {
                   color={selected === option.id ? colors.primary : colors.textSecondary}
                 />
                 {option.recommended && (
-                  <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                  <View style={[styles.badge, { backgroundColor: colors.onPrimary }]}>
                     <Text style={styles.badgeText}>Recommended</Text>
                   </View>
                 )}
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   badgeText: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontSize: 12,
     fontWeight: '600',
   },

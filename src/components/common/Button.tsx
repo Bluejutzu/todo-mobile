@@ -15,7 +15,7 @@ import { typography } from '../../theme/typography';
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'outline';
+  variant?: 'primary' | 'secondary' | 'destructive' | 'outline';
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
@@ -38,13 +38,22 @@ export function Button({
         ? themeColors.primary
         : variant === 'secondary'
           ? themeColors.secondary
-          : 'transparent',
+          : variant === 'destructive'
+            ? themeColors.error
+            : 'transparent',
     borderWidth: variant === 'outline' ? 1 : 0,
     borderColor: variant === 'outline' ? themeColors.border : undefined,
   };
 
+  const getTextColor = () => {
+    if (variant === 'outline') return themeColors.text;
+    if (variant === 'primary') return themeColors.onPrimary;
+    if (variant === 'destructive') return themeColors.onPrimary;
+    return themeColors.onPrimary; // Default for secondary
+  };
+
   const textStyle: TextStyle = {
-    color: variant === 'outline' ? themeColors.text : '#ffffff',
+    color: getTextColor(),
   };
 
   return (
@@ -55,7 +64,7 @@ export function Button({
       activeOpacity={0.7}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? themeColors.primary : '#ffffff'} />
+        <ActivityIndicator color={variant === 'outline' ? themeColors.primary : getTextColor()} />
       ) : (
         <Text style={[styles.text, textStyle]}>{title}</Text>
       )}

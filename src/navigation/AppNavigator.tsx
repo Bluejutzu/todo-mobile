@@ -4,6 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator';
 import { OnboardingNavigator } from '../screens/onboarding/OnboardingNavigator';
 import { useUserStore } from '../stores/userStore';
+import { useTodoStore } from '../stores/todoStore'; // Added import
+import { useAuth } from '@clerk/clerk-expo'; // Added import
 import { storage } from '../services/storage';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { getThemeColors } from '../theme/colors';
@@ -18,15 +20,25 @@ export function AppNavigator() {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const themeColors = getThemeColors(theme);
 
+  // Added for Clerk authentication and Cloud Storage
+  const { setTokenGetter } = useTodoStore();
+  const { getToken, isSignedIn } = useAuth();
+
+  // Initialize token getter for Cloud Storage
+  useEffect(() => {
+    setTokenGetter(getToken);
+  }, []); // Only run once on mount
+
   useEffect(() => {
     async function initialize() {
       await loadPreferences();
       const completed = await storage.isOnboardingCompleted();
-      setIsOnboarding(!completed);
+      // If not signed in, force onboarding/auth flow even if locally marked as completed
+      setIsOnboarding(!completed || !isSignedIn);
       setLoading(false);
     }
     initialize();
-  }, []);
+  }, [isSignedIn]);
 
   if (loading) {
     return (
@@ -39,7 +51,7 @@ export function AppNavigator() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isOnboarding ? (
+        {isOnboarding || !isSignedIn ? (
           <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
         ) : (
           <Stack.Screen name="Main" component={TabNavigator} />

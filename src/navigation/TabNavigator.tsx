@@ -2,8 +2,9 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { TodoListScreen } from '../screens/todos/TodoListScreen';
+import { CalendarScreen } from '../screens/calendar/CalendarScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
-import { AccountManagementScreen } from '../screens/settings/AccountManagementScreen';
+import { AccountScreen } from '../screens/account/AccountScreen';
 import { useUserStore } from '../stores/userStore';
 import { getThemeColors } from '../theme/colors';
 import type { MainTabParamList } from '../types/navigation';
@@ -21,6 +22,7 @@ export function TabNavigator() {
         tabBarStyle: {
           backgroundColor: themeColors.surface,
           borderTopColor: themeColors.border,
+          paddingHorizontal: 0,
         },
         tabBarActiveTintColor: themeColors.primary,
         tabBarInactiveTintColor: themeColors.textSecondary,
@@ -38,6 +40,15 @@ export function TabNavigator() {
         }}
       />
       <Tab.Screen
+        name="Calendar"
+        component={CalendarScreen}
+        options={{
+          tabBarLabel: 'Calendar',
+          tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} />,
+          headerShown: false,
+        }}
+      />
+      <Tab.Screen
         name="Settings"
         component={SettingsScreen}
         options={{
@@ -47,10 +58,13 @@ export function TabNavigator() {
         }}
       />
       <Tab.Screen
-        name="AccountManagement"
-        component={AccountManagementScreen}
+        name="Account"
+        component={AccountScreen}
         options={{
-          tabBarButton: () => null,
+          tabBarLabel: 'Account',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-circle" size={size} color={color} />
+          ),
           headerShown: false,
         }}
       />

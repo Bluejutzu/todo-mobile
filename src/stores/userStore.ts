@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { UserPreferences } from '../types/user';
 import { storage } from '../services/storage';
+import type { ThemeName } from '../theme/colors';
 
 interface UserStore {
   preferences: UserPreferences | null;
@@ -9,7 +10,7 @@ interface UserStore {
   // Actions
   loadPreferences: () => Promise<void>;
   updatePreferences: (updates: Partial<UserPreferences>) => Promise<void>;
-  setTheme: (theme: 'light' | 'dark' | 'auto') => Promise<void>;
+  setTheme: (theme: ThemeName) => Promise<void>;
   setAIEnabled: (enabled: boolean) => Promise<void>;
   setApiKey: (key: string) => Promise<void>;
   setUserName: (name: string) => Promise<void>;
@@ -17,7 +18,7 @@ interface UserStore {
 
 const defaultPreferences: UserPreferences = {
   name: '',
-  theme: 'auto',
+  theme: 'dark',
   onboardingCompleted: false,
   notificationsEnabled: false,
   ai: {
@@ -54,8 +55,11 @@ export const useUserStore = create<UserStore>((set, get) => ({
     await storage.saveUserPreferences(updated);
   },
 
-  setTheme: async (theme: 'light' | 'dark' | 'auto') => {
-    await get().updatePreferences({ theme });
+  setTheme: async (theme: ThemeName) => {
+    const current = get().preferences || defaultPreferences;
+    const updated = { ...current, theme };
+    await storage.saveUserPreferences(updated);
+    set({ preferences: updated });
   },
 
   setAIEnabled: async (enabled: boolean) => {

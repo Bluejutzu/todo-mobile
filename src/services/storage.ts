@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
-import { readAsStringAsync, writeAsStringAsync, documentDirectory } from 'expo-file-system/legacy';
+import { writeAsStringAsync, documentDirectory } from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { STORAGE_KEYS } from '../constants/config';
@@ -15,7 +14,39 @@ const MAX_MIGRATION_SIZE = 10 * 1024 * 1024; // 10MB in bytes
 
 let supabase: SupabaseClient | null = null;
 
+export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'error';
+export type SyncStatusListener = (
+  status: SyncStatus,
+  lastSyncTime: Date | null,
+  pendingCount: number
+) => void;
+
 export const storage = {
+  listeners: [] as SyncStatusListener[],
+  currentStatus: 'offline' as SyncStatus,
+  lastSyncTime: null as Date | null,
+  pendingCount: 0,
+
+  subscribe(listener: SyncStatusListener) {
+    this.listeners.push(listener);
+    listener(this.currentStatus, this.lastSyncTime, this.pendingCount);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
+  },
+
+  notifyListeners(status: SyncStatus, time?: Date | null, pendingCount?: number) {
+    this.currentStatus = status;
+    if (status === 'synced') {
+      this.lastSyncTime = time || new Date();
+      this.pendingCount = 0;
+    }
+    if (pendingCount !== undefined) {
+      this.pendingCount = pendingCount;
+    }
+    this.listeners.forEach(l => l(this.currentStatus, this.lastSyncTime, this.pendingCount));
+  },
+
   // Initialize Supabase client with Clerk token
   async getSupabaseClient(getToken?: () => Promise<string | null>): Promise<SupabaseClient | null> {
     const url = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -105,23 +136,31 @@ export const storage = {
   // Todos
   async getTodos(getToken?: () => Promise<string | null>): Promise<Todo[]> {
     try {
-      const storageMethod = await this.getStorageMethod();
+      // Always try Cloud Storage first if authenticated
+      if (getToken) {
+        this.notifyListeners('syncing');
+        try {
+          const client = await this.getSupabaseClient(getToken);
+          if (client) {
+            const { data, error } = await client
+              .from('todos')
+              .select('*')
+              .order('created_at', { ascending: false });
 
-      // Try Cloud Storage first if that's the selected method
-      if (storageMethod === 'cloud') {
-        const client = await this.getSupabaseClient(getToken);
-        if (client) {
-          const { data, error } = await client
-            .from('todos')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-          if (error) throw error;
-          return data || [];
+            if (!error && data) {
+              console.log('✓ Loaded from cloud storage');
+              this.notifyListeners('synced');
+              return data;
+            }
+          }
+        } catch (cloudError) {
+          console.log('Cloud load failed, using local:', cloudError);
+          this.notifyListeners('error');
         }
       }
 
-      // Fallback to local storage
+      // Fall back to local storage
+      this.notifyListeners('offline');
       const customPath = await this.getStoragePath();
 
       if (customPath) {
@@ -129,7 +168,9 @@ export const storage = {
         if (Platform.OS === 'android' && customPath.startsWith('content://')) {
           try {
             const fileUri = customPath + '%2F' + TODOS_FILENAME; // SAF encoding
-            const content = await readAsStringAsync(fileUri);
+            const file = new FileSystem.File(fileUri);
+            const content = await file.text();
+            console.log('✓ Loaded from local storage (SAF)');
             return JSON.parse(content);
           } catch {
             // File might not exist yet
@@ -138,9 +179,11 @@ export const storage = {
         } else {
           // Standard file system path
           const fileUri = customPath + '/' + TODOS_FILENAME;
-          const info = await FileSystem.getInfoAsync(fileUri);
+          const file = new FileSystem.File(fileUri);
+          const info = await file.info();
           if (info.exists) {
-            const content = await readAsStringAsync(fileUri);
+            const content = await file.text();
+            console.log('✓ Loaded from local storage (file)');
             return JSON.parse(content);
           }
         }
@@ -149,38 +192,62 @@ export const storage = {
 
       // Fallback to AsyncStorage if no custom path
       const data = await AsyncStorage.getItem(STORAGE_KEYS.TODOS);
-      return data ? JSON.parse(data) : [];
+      if (data) {
+        console.log('✓ Loaded from local storage (AsyncStorage)');
+        return JSON.parse(data);
+      }
+      return [];
     } catch (error) {
       console.error('Error loading todos:', error);
+      this.notifyListeners('error');
       return [];
     }
   },
 
   async saveTodos(todos: Todo[], getToken?: () => Promise<string | null>): Promise<void> {
     try {
-      const storageMethod = await this.getStorageMethod();
+      // Always try Cloud Storage first if authenticated
+      if (getToken) {
+        this.notifyListeners('syncing');
+        try {
+          const client = await this.getSupabaseClient(getToken);
+          if (client) {
+            const token = await getToken();
+            if (token) {
+              // Decode JWT to get user_id (sub claim)
+              const payload = JSON.parse(atob(token.split('.')[1]));
+              const userId = payload.sub;
 
-      // Try Cloud Storage first if that's the selected method
-      if (storageMethod === 'cloud') {
-        const client = await this.getSupabaseClient(getToken);
-        if (client) {
-          // For Cloud Storage, we upsert all todos
-          // The user_id will be automatically set by the database default
-          const { error } = await client.from('todos').upsert(
-            todos.map(t => ({
-              id: t.id,
-              title: t.title,
-              completed: t.completed,
-              // user_id is set automatically by Cloud Storage using auth.jwt()->>'sub'
-            }))
-          );
+              // Save to cloud
+              const { error } = await client.from('todos').upsert(
+                todos.map(t => ({
+                  id: t.id,
+                  title: t.title,
+                  completed: t.completed,
+                  user_id: userId,
+                  created_at: t.createdAt || new Date().toISOString(),
+                  updated_at: t.updatedAt || new Date().toISOString(),
+                }))
+              );
 
-          if (error) console.error('Cloud Storage save error:', error);
-          return; // Don't save locally if using Cloud Storage
+              if (error) {
+                console.error('Cloud Storage save error:', error);
+                this.notifyListeners('error', null, todos.length); // Assume all pending on error
+              } else {
+                console.log('✓ Saved to cloud storage');
+                this.notifyListeners('synced', new Date(), 0);
+              }
+            }
+          }
+        } catch (cloudError) {
+          console.log('Cloud save failed, will save locally:', cloudError);
+          this.notifyListeners('offline', null, todos.length);
         }
+      } else {
+        this.notifyListeners('offline', null, todos.length);
       }
 
-      // Fallback to local storage
+      // Always save locally as backup/cache
       const customPath = await this.getStoragePath();
       const content = JSON.stringify(todos, null, 2);
 
@@ -189,20 +256,16 @@ export const storage = {
           // SAF on Android
           try {
             const fileUri = customPath + '%2F' + TODOS_FILENAME;
-            // Check if file exists, if not create it
-            // SAF doesn't support simple "write to URI" if it doesn't exist in some cases,
-            // but typically we write to the document URI.
-            // However, SAF requires creating the file first if it doesn't exist using createFileAsync
-            // But readAsStringAsync works with the direct URI if we know it.
-            // Let's try writing. If it fails, we might need to create it.
-            await writeAsStringAsync(fileUri, content);
+            const file = new FileSystem.File(fileUri);
+            await file.write(content);
           } catch {
             // If write fails, maybe file doesn't exist. Create it.
             try {
               const SAF = (FileSystem as any).StorageAccessFramework;
               await SAF.createFileAsync(customPath, TODOS_FILENAME, 'application/json').then(
                 async (uri: string) => {
-                  await writeAsStringAsync(uri, content);
+                  const file = new FileSystem.File(uri);
+                  await file.write(content);
                 }
               );
             } catch (createError) {
@@ -212,14 +275,17 @@ export const storage = {
         } else {
           // Standard file system
           const fileUri = customPath + '/' + TODOS_FILENAME;
-          await writeAsStringAsync(fileUri, content);
+          const file = new FileSystem.File(fileUri);
+          await file.write(content);
         }
       } else {
         // Fallback to AsyncStorage
         await AsyncStorage.setItem(STORAGE_KEYS.TODOS, content);
       }
+      console.log('✓ Saved to local storage (backup)');
     } catch (error) {
       console.error('Error saving todos:', error);
+      this.notifyListeners('error');
     }
   },
 

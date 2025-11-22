@@ -1,6 +1,16 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, Switch } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  Platform,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
@@ -11,48 +21,31 @@ import { typography } from '../../theme/typography';
 
 import { storage } from '../../services/storage';
 import * as FileSystem from 'expo-file-system';
-import { Platform, Alert, ActivityIndicator } from 'react-native';
-import { useUser } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { MainTabParamList } from '../../types/navigation';
+import { getAvailableThemes, getThemeDisplayName, themes } from '../../theme/colors';
 
 export function SettingsScreen() {
-  const navigation = useNavigation<NativeStackNavigationProp<MainTabParamList>>();
-  const { user } = useUser();
+  const insets = useSafeAreaInsets();
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const preferences = useUserStore(state => state.preferences);
-  const { setTheme, setAIEnabled, setApiKey, updatePreferences } = useUserStore();
+  const { setTheme, setAIEnabled, setApiKey } = useUserStore();
 
   const themeColors = getThemeColors(theme);
 
   const [apiKey, setApiKeyLocal] = useState(preferences?.ai?.openRouterKey || '');
-  const [name, setName] = useState(preferences?.name || '');
   const [storagePath, setStoragePath] = useState<string | null>(null);
   const [migrating, setMigrating] = useState(false);
-  const [showExportReminder, setShowExportReminder] = useState(false);
-  const [lastExportDate, setLastExportDate] = useState<Date | null>(null);
-  const [exporting, setExporting] = useState(false);
-  const [storageMethod, setStorageMethodState] = useState<'cloud' | 'local'>('cloud');
+  const [storageMethod, setStorageMethodState] = useState<'cloud' | 'local'>('local');
   const [switching, setSwitching] = useState(false);
 
   React.useEffect(() => {
     loadStoragePath();
-    checkExportReminder();
     loadStorageMethod();
   }, []);
 
   const loadStoragePath = async () => {
     const path = await storage.getStoragePath();
     setStoragePath(path);
-  };
-
-  const checkExportReminder = async () => {
-    const shouldRemind = await storage.shouldShowExportReminder();
-    setShowExportReminder(shouldRemind);
-    const lastExport = await storage.getLastExportDate();
-    setLastExportDate(lastExport);
   };
 
   const loadStorageMethod = async () => {
@@ -108,11 +101,6 @@ export function SettingsScreen() {
     }
   };
 
-  const handleManageAccount = async () => {
-    // Navigate to custom account management screen
-    (navigation as any).navigate('AccountManagement');
-  };
-
   const handleSwitchStorage = async () => {
     const newMethod = storageMethod === 'cloud' ? 'local' : 'cloud';
 
@@ -153,90 +141,19 @@ export function SettingsScreen() {
     );
   };
 
-  const handleExportData = async () => {
-    setExporting(true);
-    try {
-      if (Platform.OS === 'android') {
-        Alert.alert('Export Data', 'Choose export method:', [
-          {
-            text: 'Share File',
-            onPress: async () => {
-              const success = await storage.exportData();
-              if (success) {
-                Alert.alert('Success', 'Data exported successfully');
-                await checkExportReminder();
-              } else {
-                Alert.alert('Error', 'Failed to export data');
-              }
-              setExporting(false);
-            },
-          },
-          {
-            text: 'Save to Folder',
-            onPress: async () => {
-              try {
-                const SAF = (FileSystem as any).StorageAccessFramework;
-                const permissions = await SAF.requestDirectoryPermissionsAsync();
-                if (permissions.granted) {
-                  const success = await storage.exportData(permissions.directoryUri);
-                  if (success) {
-                    Alert.alert('Success', 'Data exported to selected folder');
-                    await checkExportReminder();
-                  } else {
-                    Alert.alert('Error', 'Failed to export data');
-                  }
-                }
-              } catch (error) {
-                console.error('Export error:', error);
-                Alert.alert('Error', 'Failed to export data');
-              }
-              setExporting(false);
-            },
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-            onPress: () => setExporting(false),
-          },
-        ]);
-      } else {
-        const success = await storage.exportData();
-        if (success) {
-          Alert.alert('Success', 'Data exported successfully');
-          await checkExportReminder();
-        } else {
-          Alert.alert('Error', 'Failed to export data');
-        }
-        setExporting(false);
-      }
-    } catch (error) {
-      console.error('Export error:', error);
-      Alert.alert('Error', 'Failed to export data');
-      setExporting(false);
-    }
-  };
-
-  const handleSaveProfile = async () => {
-    await updatePreferences({ name });
-  };
-
   const handleSaveApiKey = async () => {
     await setApiKey(apiKey);
   };
 
   return (
     <ScrollView
-      style={[styles.container, { backgroundColor: themeColors.background }]}
+      style={[
+        styles.container,
+        { backgroundColor: themeColors.background, paddingTop: insets.top },
+      ]}
       contentContainerStyle={styles.content}
     >
       <Text style={[styles.title, { color: themeColors.text }]}>Settings</Text>
-
-      {/* Profile Section */}
-      <Card style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Profile</Text>
-        <Input label="Name" value={name} onChangeText={setName} placeholder="Enter your name" />
-        <Button title="Save Profile" onPress={handleSaveProfile} variant="primary" />
-      </Card>
 
       {/* Appearance Section */}
       <Card style={styles.section}>
@@ -249,6 +166,60 @@ export function SettingsScreen() {
             trackColor={{ false: themeColors.border, true: themeColors.primary }}
             thumbColor="#ffffff"
           />
+        </View>
+      </Card>
+
+      {/* Theme Selector */}
+      <Card style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Theme</Text>
+        <View style={styles.themeGrid}>
+          {getAvailableThemes().map(themeName => {
+            const themePreview = themes[themeName];
+            const isSelected = theme === themeName;
+            return (
+              <TouchableOpacity
+                key={themeName}
+                style={[
+                  styles.themeCard,
+                  {
+                    backgroundColor: themeColors.surface,
+                    borderColor: isSelected ? themeColors.primary : themeColors.border,
+                  },
+                  isSelected && styles.themeCardSelected,
+                ]}
+                onPress={() => setTheme(themeName)}
+              >
+                <View style={styles.themePreview}>
+                  <View style={[styles.themeColorBox, { backgroundColor: themePreview.primary }]} />
+                  <View
+                    style={[styles.themeColorBox, { backgroundColor: themePreview.secondary }]}
+                  />
+                  <View
+                    style={[styles.themeColorBox, { backgroundColor: themePreview.background }]}
+                  />
+                </View>
+                <Text style={[styles.themeName, { color: themeColors.text }]}>
+                  {getThemeDisplayName(themeName)}
+                </Text>
+                {isSelected && (
+                  <View style={[styles.themeCheckmark, { backgroundColor: themeColors.primary }]}>
+                    <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <View
+          style={[
+            styles.comingSoonBanner,
+            { backgroundColor: themeColors.surface, borderColor: themeColors.border },
+          ]}
+        >
+          <Ionicons name="sparkles" size={16} color={themeColors.textSecondary} />
+          <Text style={[styles.comingSoonText, { color: themeColors.textSecondary }]}>
+            Custom themes coming soon
+          </Text>
         </View>
       </Card>
 
@@ -337,63 +308,6 @@ export function SettingsScreen() {
         </Card>
       )}
 
-      {/* Account Management Section */}
-      <Card style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Account</Text>
-        {user && (
-          <>
-            <View style={styles.row}>
-              <Ionicons name="person-circle" size={24} color={themeColors.textSecondary} />
-              <View style={styles.userInfo}>
-                <Text style={[styles.label, { color: themeColors.text }]}>
-                  {user.fullName || user.primaryEmailAddress?.emailAddress || 'User'}
-                </Text>
-                <Text
-                  style={[styles.bodyText, styles.emailText, { color: themeColors.textSecondary }]}
-                >
-                  {user.primaryEmailAddress?.emailAddress}
-                </Text>
-              </View>
-            </View>
-            <Button title="Manage Account" onPress={handleManageAccount} variant="secondary" />
-          </>
-        )}
-      </Card>
-
-      {/* Data Export Section */}
-      <Card style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Data Export</Text>
-        {showExportReminder && (
-          <View
-            style={[
-              styles.reminderBanner,
-              { backgroundColor: themeColors.primary + '20', borderColor: themeColors.primary },
-            ]}
-          >
-            <Ionicons name="warning" size={20} color={themeColors.primary} />
-            <Text style={[styles.reminderText, { color: themeColors.primary }]}>
-              It&apos;s been 30+ days since your last export
-            </Text>
-          </View>
-        )}
-        {lastExportDate && (
-          <Text
-            style={[styles.bodyText, styles.lastExportText, { color: themeColors.textSecondary }]}
-          >
-            Last exported: {lastExportDate.toLocaleDateString()}
-          </Text>
-        )}
-        {exporting ? (
-          <View style={styles.row}>
-            <Text style={{ color: themeColors.text }}>Exporting...</Text>
-            <ActivityIndicator color={themeColors.primary} />
-          </View>
-        ) : (
-          <Button title="Export Data" onPress={handleExportData} variant="primary" />
-        )}
-      </Card>
-
-      {/* About Section */}
       <Card style={styles.section}>
         <Text style={[styles.sectionTitle, { color: themeColors.text }]}>About</Text>
         <Text style={[styles.bodyText, { color: themeColors.textSecondary }]}>
@@ -448,29 +362,6 @@ const styles = StyleSheet.create({
   pathTextMargin: {
     marginBottom: 12,
   },
-  reminderBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 12,
-    gap: 8,
-  },
-  reminderText: {
-    flex: 1,
-    fontSize: 14,
-  },
-  userInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  emailText: {
-    fontSize: 12,
-  },
-  lastExportText: {
-    marginBottom: 12,
-  },
   storageInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -479,5 +370,58 @@ const styles = StyleSheet.create({
   },
   storageTextContainer: {
     flex: 1,
+  },
+  themeGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
+  themeCard: {
+    width: '47%',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    position: 'relative',
+  },
+  themeCardSelected: {
+    borderWidth: 2,
+  },
+  themePreview: {
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: 8,
+  },
+  themeColorBox: {
+    flex: 1,
+    height: 24,
+    borderRadius: 4,
+  },
+  themeName: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  themeCheckmark: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  comingSoonBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 8,
+  },
+  comingSoonText: {
+    fontSize: 14,
+    fontStyle: 'italic',
   },
 });

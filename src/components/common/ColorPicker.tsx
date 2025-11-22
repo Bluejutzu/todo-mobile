@@ -50,7 +50,9 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
             onPress={() => onChange(color.value)}
             activeOpacity={0.7}
           >
-            {value === color.value && <Text style={styles.checkmark}>✓</Text>}
+            {value === color.value && (
+              <Text style={[styles.checkmark, { color: themeColors.onPrimary }]}>✓</Text>
+            )}
           </TouchableOpacity>
         ))}
       </ScrollView>

@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../common/Card';
 import { useUserStore } from '../../stores/userStore';
 import { getThemeColors } from '../../theme/colors';
-import { spacing, borderRadius } from '../../theme/spacing';
+import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import type { Todo } from '../../types/todo';
 
@@ -54,43 +55,40 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress }: TodoItemProps
       >
         <View style={styles.container}>
           <TouchableOpacity
-            onPress={onToggle}
             style={[
               styles.checkbox,
-              { borderColor: themeColors.primary },
-              todo.completed && { backgroundColor: themeColors.primary },
+              {
+                borderColor: getPriorityColor(todo.priority),
+              },
+              todo.completed && { backgroundColor: themeColors.success },
+              todo.completed && { borderColor: themeColors.success },
             ]}
-            activeOpacity={0.7}
+            onPress={onToggle}
           >
-            {todo.completed && <Text style={styles.checkmark}>✓</Text>}
+            {todo.completed && (
+              <Ionicons name="checkmark" size={16} color={themeColors.onPrimary} />
+            )}
           </TouchableOpacity>
 
           <View style={styles.content}>
-            <View style={styles.headerRow}>
-              <Text
-                style={[
-                  styles.title,
-                  { color: themeColors.text },
-                  todo.completed && styles.completedText,
-                ]}
-                numberOfLines={1}
-              >
-                {todo.title}
+            <Text
+              style={[
+                styles.title,
+                {
+                  color: todo.completed ? themeColors.textSecondary : themeColors.text,
+                },
+                // eslint-disable-next-line react-native/no-inline-styles
+                todo.completed && { textDecorationLine: 'line-through' },
+              ]}
+              numberOfLines={1}
+            >
+              {todo.title}
+            </Text>
+            {todo.dueDate && (
+              <Text style={[styles.date, { color: themeColors.textSecondary }]}>
+                {new Date(todo.dueDate).toLocaleDateString()}
               </Text>
-              {todo.priority && (
-                <View
-                  style={[
-                    styles.badge,
-                    { backgroundColor: getPriorityColor(todo.priority) + '20' },
-                  ]}
-                >
-                  <Text style={[styles.badgeText, { color: getPriorityColor(todo.priority) }]}>
-                    {todo.priority}
-                  </Text>
-                </View>
-              )}
-            </View>
-
+            )}
             {todo.description && (
               <Text
                 style={[
@@ -150,26 +148,11 @@ const styles = StyleSheet.create({
   borderLeft: {
     borderLeftWidth: 4,
   },
-  completedText: {
-    textDecorationLine: 'line-through',
-    opacity: 0.6,
-  },
   completedOpacity: {
     opacity: 0.5,
   },
-  checkmark: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   content: {
     flex: 1,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
   },
   title: {
     ...typography.body,
@@ -181,6 +164,10 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     marginBottom: spacing.sm,
   },
+  date: {
+    ...typography.caption,
+    marginBottom: spacing.xs,
+  },
   footer: {
     flexDirection: 'row',
     gap: spacing.md,
@@ -191,15 +178,5 @@ const styles = StyleSheet.create({
   },
   metaText: {
     ...typography.caption,
-  },
-  badge: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-  },
-  badgeText: {
-    ...typography.caption,
-    fontWeight: '600',
-    textTransform: 'capitalize',
   },
 });

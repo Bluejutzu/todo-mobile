@@ -166,9 +166,8 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
                   <Text
                     style={[
                       styles.priorityText,
-                      // eslint-disable-next-line react-native/no-inline-styles
                       {
-                        color: priority === p.value ? '#ffffff' : themeColors.text,
+                        color: priority === p.value ? themeColors.onPrimary : themeColors.text,
                       },
                     ]}
                   >
