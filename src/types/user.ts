@@ -5,6 +5,7 @@ export interface UserPreferences {
   name: string;
   theme: 'light' | 'dark' | 'auto';
   onboardingCompleted: boolean;
+  notificationsEnabled: boolean;
 
   // AI Configuration
   ai: AIConfig;

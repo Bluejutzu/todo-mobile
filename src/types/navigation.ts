@@ -4,17 +4,15 @@ export type RootStackParamList = {
 };
 
 export type OnboardingStackParamList = {
-  Welcome: undefined;
-  NameInput: undefined;
-  ThemeSelection: undefined;
-  AISetup: undefined;
-  Permissions: undefined;
-  Ready: undefined;
+  Name: undefined;
+  Preferences: undefined;
+  Auth: undefined;
 };
 
 export type MainTabParamList = {
   Todos: undefined;
   Settings: undefined;
+  AccountManagement: undefined;
 };
 
 export type TodoStackParamList = {

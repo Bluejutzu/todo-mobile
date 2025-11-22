@@ -12,12 +12,14 @@ interface UserStore {
   setTheme: (theme: 'light' | 'dark' | 'auto') => Promise<void>;
   setAIEnabled: (enabled: boolean) => Promise<void>;
   setApiKey: (key: string) => Promise<void>;
+  setUserName: (name: string) => Promise<void>;
 }
 
 const defaultPreferences: UserPreferences = {
   name: '',
   theme: 'auto',
   onboardingCompleted: false,
+  notificationsEnabled: false,
   ai: {
     provider: 'google',
     model: 'gemini-pro',
@@ -68,5 +70,9 @@ export const useUserStore = create<UserStore>((set, get) => ({
     await get().updatePreferences({
       ai: { ...current.ai, openRouterKey: key },
     });
+  },
+
+  setUserName: async (name: string) => {
+    await get().updatePreferences({ name });
   },
 }));

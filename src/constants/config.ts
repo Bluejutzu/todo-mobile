@@ -10,4 +10,8 @@ export const STORAGE_KEYS = {
   TODOS: '@todos',
   USER_PREFERENCES: '@user_preferences',
   ONBOARDING_COMPLETED: '@onboarding_completed',
+  STORAGE_PATH: '@storage_path',
+  SUPABASE_URL: '@supabase_url',
+  SUPABASE_KEY: '@supabase_key',
+  SYNC_METHOD: '@sync_method',
 } as const;

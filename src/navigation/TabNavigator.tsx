@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { TodoListScreen } from '../screens/todos/TodoListScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
+import { AccountManagementScreen } from '../screens/settings/AccountManagementScreen';
 import { useUserStore } from '../stores/userStore';
 import { getThemeColors } from '../theme/colors';
 import type { MainTabParamList } from '../types/navigation';
@@ -30,7 +31,9 @@ export function TabNavigator() {
         component={TodoListScreen}
         options={{
           tabBarLabel: 'Todos',
-          tabBarIcon: ({ color }) => <Text style={[styles.icon, { color }]}>☑</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="checkmark-done" size={size} color={color} />
+          ),
           headerShown: false,
         }}
       />
@@ -39,16 +42,18 @@ export function TabNavigator() {
         component={SettingsScreen}
         options={{
           tabBarLabel: 'Settings',
-          tabBarIcon: ({ color }) => <Text style={[styles.icon, { color }]}>⚙</Text>,
+          tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
+          headerShown: false,
+        }}
+      />
+      <Tab.Screen
+        name="AccountManagement"
+        component={AccountManagementScreen}
+        options={{
+          tabBarButton: () => null,
           headerShown: false,
         }}
       />
     </Tab.Navigator>
   );
 }
-
-const styles = StyleSheet.create({
-  icon: {
-    fontSize: 24,
-  },
-});
