@@ -9,6 +9,7 @@ import {
     Platform,
     Share,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../../stores/userStore';
 import { getThemeColors } from '../../theme/colors';
@@ -57,23 +58,39 @@ export function TodoDetailModal({
         }
     };
 
-    const formatDate = (date: Date) => {
-        return new Date(date).toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-        });
+    const formatDate = (date: Date | string | null | undefined) => {
+        if (!date) return 'No date set';
+        try {
+            const dateObj = typeof date === 'string' ? new Date(date) : date;
+            if (isNaN(dateObj.getTime())) return 'Invalid date';
+            return dateObj.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+            });
+        } catch (error) {
+            console.error(error)
+            return 'Invalid date';
+        }
     };
 
-    const formatTimestamp = (date: Date) => {
-        return new Date(date).toLocaleString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
+    const formatTimestamp = (date: Date | string | null | undefined) => {
+        if (!date) return 'Unknown';
+        try {
+            const dateObj = typeof date === 'string' ? new Date(date) : date;
+            if (isNaN(dateObj.getTime())) return 'Invalid date';
+            return dateObj.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+            });
+        } catch (error) {
+            console.error(error)
+            return 'Invalid date';
+        }
     };
 
     const handleShare = async () => {
@@ -93,7 +110,7 @@ export function TodoDetailModal({
         }
     };
 
-    const priorityColor = getPriorityColor(todo.priority);
+    const priorityColor = getPriorityColor(todo.priority || 'medium');
     const completedSubtasks = todo.subtasks?.filter(t => t.completed).length || 0;
     const totalSubtasks = todo.subtasks?.length || 0;
 
@@ -102,10 +119,10 @@ export function TodoDetailModal({
             <Modal
                 visible={visible}
                 animationType="slide"
-                presentationStyle="pageSheet"
+                presentationStyle="fullScreen"
                 onRequestClose={onClose}
             >
-                <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+                <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
                     {/* Header */}
                     <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
                         <TouchableOpacity onPress={onClose} style={styles.headerButton}>
@@ -117,7 +134,13 @@ export function TodoDetailModal({
                         </TouchableOpacity>
 
                         <View style={styles.headerActions}>
-                            <TouchableOpacity onPress={onEdit} style={styles.headerButton}>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    onClose();
+                                    onEdit();
+                                }}
+                                style={styles.headerButton}
+                            >
                                 <Ionicons name="create-outline" size={24} color={themeColors.text} />
                             </TouchableOpacity>
                             <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
@@ -155,7 +178,7 @@ export function TodoDetailModal({
                                         { color: todo.completed ? themeColors.primary : priorityColor },
                                     ]}
                                 >
-                                    {todo.completed ? 'Completed' : `${todo.priority} Priority`}
+                                    {todo.completed ? 'Completed' : `${todo.priority || 'medium'} Priority`}
                                 </Text>
                             </View>
 
@@ -220,7 +243,7 @@ export function TodoDetailModal({
                                         Priority
                                     </Text>
                                     <Text style={[styles.metadataValue, { color: themeColors.text }]}>
-                                        {todo.priority ? todo.priority.charAt(0).toUpperCase() + todo.priority.slice(1) : "None"}
+                                        {(todo.priority || 'medium').charAt(0).toUpperCase() + (todo.priority || 'medium').slice(1)}
                                     </Text>
                                 </View>
                             </View>
@@ -312,7 +335,10 @@ export function TodoDetailModal({
                                         : themeColors.primary,
                                 },
                             ]}
-                            onPress={onToggleComplete}
+                            onPress={() => {
+                                onClose();
+                                onToggleComplete();
+                            }}
                         >
                             <Ionicons
                                 name={todo.completed ? 'close-circle-outline' : 'checkmark-circle'}
@@ -341,7 +367,7 @@ export function TodoDetailModal({
                             <Ionicons name="trash-outline" size={20} color="#ef4444" />
                         </TouchableOpacity>
                     </View>
-                </View>
+                </SafeAreaView>
             </Modal>
 
             {/* Action Sheet for More Options */}
@@ -376,6 +402,7 @@ export function TodoDetailModal({
 
 const styles = StyleSheet.create({
     container: {
+        paddingTop: spacing.sm,
         flex: 1,
     },
     header: {

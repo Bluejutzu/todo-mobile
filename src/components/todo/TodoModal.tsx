@@ -3,10 +3,10 @@ import {
   View,
   Text,
   Modal,
-  ScrollView,
-  StyleSheet,
+  TextInput,
   TouchableOpacity,
-  TextInput as RNTextInput,
+  StyleSheet,
+  ScrollView,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +22,7 @@ import { typography } from '../../theme/typography';
 import type { Todo, TodoPriority } from '../../types/todo';
 import type { AIConfig } from '../../types/ai';
 import { aiService } from '../../services/ai';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface TodoModalProps {
   visible: boolean;
@@ -158,7 +159,7 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
             lastUsed: new Date(),
           } as AIConfig,
         });
-        console.log(`[TodoModal] Updated usage: +${requestsMade} requests, +${totalTokens} tokens`);
+        console.log(`[TodoModal] Updated usage: +${ requestsMade } requests, +${ totalTokens } tokens`);
       }
 
       setAiMessage('AI improvements applied!');
@@ -194,10 +195,10 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { backgroundColor: themeColors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.headerButton}>
@@ -257,7 +258,7 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
           {/* Description */}
           <View style={styles.field}>
             <Text style={[styles.label, { color: themeColors.text }]}>Description</Text>
-            <RNTextInput
+            <TextInput
               style={[
                 styles.textarea,
                 {
@@ -327,13 +328,14 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
           {/* Color */}
           <ColorPicker label="Color" value={color} onChange={setColor} />
         </ScrollView>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    paddingTop: spacing.xs,
     flex: 1,
   },
   header: {

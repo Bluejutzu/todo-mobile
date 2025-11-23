@@ -1,9 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useUserStore } from '../../stores/userStore';
 import { getThemeColors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import MaskedView from '@react-native-masked-view/masked-view';
 
 interface AILoadingIndicatorProps {
     message?: string;
@@ -17,18 +19,11 @@ export function AILoadingIndicator({ message = 'AI is thinking...' }: AILoadingI
 
     useEffect(() => {
         const animation = Animated.loop(
-            Animated.sequence([
-                Animated.timing(shimmerAnim, {
-                    toValue: 1,
-                    duration: 1500,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(shimmerAnim, {
-                    toValue: 0,
-                    duration: 0,
-                    useNativeDriver: true,
-                }),
-            ])
+            Animated.timing(shimmerAnim, {
+                toValue: 1,
+                duration: 2000,
+                useNativeDriver: true,
+            })
         );
         animation.start();
         return () => animation.stop();
@@ -36,23 +31,45 @@ export function AILoadingIndicator({ message = 'AI is thinking...' }: AILoadingI
 
     const translateX = shimmerAnim.interpolate({
         inputRange: [0, 1],
-        outputRange: [-200, 200],
+        outputRange: [-300, 300],
     });
 
     return (
         <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
-            <View style={styles.shimmerContainer}>
+            <MaskedView
+                style={styles.maskedView}
+                maskElement={
+                    <View style={styles.maskContainer}>
+                        <Text style={[styles.text, styles.maskText]}>{message}</Text>
+                    </View>
+                }
+            >
+                {/* Base text color */}
+                <Text style={[styles.text, styles.baseText, { color: themeColors.textSecondary }]}>
+                    {message}
+                </Text>
+
+                {/* Animated shimmer gradient */}
                 <Animated.View
                     style={[
-                        styles.shimmer,
+                        styles.shimmerContainer,
                         {
-                            backgroundColor: themeColors.primary,
                             transform: [{ translateX }],
                         },
                     ]}
-                />
-                <Text style={[styles.text, { color: themeColors.text }]}>{message}</Text>
-            </View>
+                >
+                    <LinearGradient
+                        colors={[
+                            'transparent',
+                            theme === 'dark' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(100, 100, 100, 0.8)',
+                            'transparent',
+                        ]}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.gradient}
+                    />
+                </Animated.View>
+            </MaskedView>
         </View>
     );
 }
@@ -64,21 +81,35 @@ const styles = StyleSheet.create({
         marginVertical: spacing.sm,
         overflow: 'hidden',
     },
-    shimmerContainer: {
-        position: 'relative',
-        overflow: 'hidden',
+    maskedView: {
+        height: 30,
+        justifyContent: 'center',
     },
-    shimmer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        opacity: 0.2,
+    maskContainer: {
+        backgroundColor: 'transparent',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     text: {
         ...typography.body,
         textAlign: 'center',
         paddingVertical: spacing.xs,
+    },
+    maskText: {
+        color: '#000',
+    },
+    baseText: {
+        opacity: 0.5,
+    },
+    shimmerContainer: {
+        position: 'absolute',
+        top: 0,
+        left: -300,
+        width: 600,
+        height: '100%',
+    },
+    gradient: {
+        flex: 1,
+        width: '100%',
     },
 });

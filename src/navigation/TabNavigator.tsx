@@ -8,12 +8,15 @@ import { AccountScreen } from '../screens/account/AccountScreen';
 import { useUserStore } from '../stores/userStore';
 import { getThemeColors } from '../theme/colors';
 import type { MainTabParamList } from '../types/navigation';
+import { useUser } from '@clerk/clerk-expo';
+import { Image, StyleSheet } from 'react-native';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export function TabNavigator() {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const themeColors = getThemeColors(theme);
+  const { user } = useUser();
 
   return (
     <Tab.Navigator
@@ -63,7 +66,11 @@ export function TabNavigator() {
         options={{
           tabBarLabel: 'Account',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-circle" size={size} color={color} />
+            user ? (
+              <Image source={{ uri: user.imageUrl }} style={styles.icon} height={size} width={size} />
+            ) : (
+              <Ionicons name="person-circle" size={size} color={color} />
+            )
           ),
           headerShown: false,
         }}
@@ -71,3 +78,9 @@ export function TabNavigator() {
     </Tab.Navigator>
   );
 }
+
+const styles = StyleSheet.create({
+  icon: {
+    borderRadius: 100,
+  },
+});

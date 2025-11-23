@@ -221,7 +221,7 @@ export function AccountScreen() {
             <Text style={[styles.greetingText, { color: colors.text }]}>
               Hey{' '}
               <Text style={styles.greetingName}>
-                {preferences?.name || user?.firstName || 'there'}
+                {user?.firstName || preferences?.name || 'there'}
               </Text>
             </Text>
             <Text style={[styles.greetingPhrase, { color: colors.textSecondary }]}>
@@ -345,15 +345,20 @@ export function AccountScreen() {
             </View>
           )}
           {lastExportDate && (
-            <Text style={[styles.bodyText, { color: colors.textSecondary }]}>
-              Last export: {lastExportDate.toLocaleDateString()}
-            </Text>
+            <>
+              <Text style={[styles.bodyText, { color: colors.textSecondary }]}>
+                Last export: {lastExportDate.toLocaleDateString()}
+              </Text>
+              <Text style={[styles.bodyText, { color: colors.text }]}>
+                Next possible export: {new Date(lastExportDate.setDate(lastExportDate.getDate() + 30)).toLocaleDateString()}
+              </Text>
+            </>
           )}
           <Button
             title={exporting ? 'Exporting...' : 'Export Data'}
             onPress={handleExport}
             variant="secondary"
-            disabled={exporting}
+            disabled={!showExportReminder || exporting}
           />
         </Card>
 
