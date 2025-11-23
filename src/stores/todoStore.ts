@@ -75,7 +75,19 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   },
 
   deleteTodo: async (id: string) => {
-    const todos = get().todos.filter(todo => todo.id !== id);
+    // Dynamic import to avoid circular dependency if any (though likely none here as userStore doesn't import todoStore)
+    const { useUserStore } = require('./userStore');
+    const deleteMode = useUserStore.getState().preferences?.storage?.deleteMode || 'soft';
+
+    let todos;
+    if (deleteMode === 'soft') {
+      todos = get().todos.map(todo =>
+        todo.id === id ? { ...todo, deletedAt: new Date(), updatedAt: new Date() } : todo
+      );
+    } else {
+      todos = get().todos.filter(todo => todo.id !== id);
+    }
+
     set({ todos });
     await storage.saveTodos(todos, get().getToken);
   },
@@ -84,11 +96,11 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
     const todos = get().todos.map(todo =>
       todo.id === id
         ? {
-            ...todo,
-            completed: !todo.completed,
-            completedAt: !todo.completed ? new Date() : undefined,
-            updatedAt: new Date(),
-          }
+          ...todo,
+          completed: !todo.completed,
+          completedAt: !todo.completed ? new Date() : undefined,
+          updatedAt: new Date(),
+        }
         : todo
     );
     set({ todos });

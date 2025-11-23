@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../../stores/userStore';
 import { getThemeColors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
@@ -52,7 +53,7 @@ export function TodoActionSheet({
 
           <View style={styles.actions}>
             <ActionButton
-              icon="✏️"
+              iconName="create-outline"
               label="Edit"
               onPress={() => {
                 onClose();
@@ -61,7 +62,7 @@ export function TodoActionSheet({
               themeColors={themeColors}
             />
             <ActionButton
-              icon="📋"
+              iconName="copy-outline"
               label="Duplicate"
               onPress={() => {
                 onClose();
@@ -70,7 +71,7 @@ export function TodoActionSheet({
               themeColors={themeColors}
             />
             <ActionButton
-              icon="📤"
+              iconName="share-outline"
               label="Share"
               onPress={() => {
                 onClose();
@@ -79,7 +80,7 @@ export function TodoActionSheet({
               themeColors={themeColors}
             />
             <ActionButton
-              icon="🔥"
+              iconName="flag-outline"
               label={`Priority: ${todo.priority}`}
               onPress={() => {
                 onClose();
@@ -88,7 +89,7 @@ export function TodoActionSheet({
               themeColors={themeColors}
             />
             <ActionButton
-              icon="🗑️"
+              iconName="trash-outline"
               label="Delete"
               onPress={() => {
                 onClose();
@@ -112,20 +113,25 @@ export function TodoActionSheet({
 }
 
 interface ActionButtonProps {
-  icon: string;
+  iconName: string;
   label: string;
   onPress: () => void;
   themeColors: Record<string, string>;
   destructive?: boolean;
 }
 
-function ActionButton({ icon, label, onPress, themeColors, destructive }: ActionButtonProps) {
+function ActionButton({ iconName, label, onPress, themeColors, destructive }: ActionButtonProps) {
   return (
     <TouchableOpacity
       style={[styles.actionButton, { borderBottomColor: themeColors.border }]}
       onPress={onPress}
     >
-      <Text style={styles.actionIcon}>{icon}</Text>
+      <Ionicons
+        name={iconName as any}
+        size={22}
+        color={destructive ? '#ef4444' : themeColors.text}
+        style={styles.actionIcon}
+      />
       <Text
         style={[
           styles.actionLabel,
@@ -178,10 +184,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   actionIcon: {
-    fontSize: 20,
     marginRight: spacing.md,
     width: 30,
-    textAlign: 'center',
   },
   actionLabel: {
     ...typography.body,

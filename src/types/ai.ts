@@ -1,4 +1,4 @@
-export type AIProvider = 'app-openrouter' | 'own-openrouter' | 'anthropic' | 'openai' | 'google';
+export type AIProvider = 'openrouter' | 'anthropic' | 'openai' | 'google';
 
 export interface AIConfig {
   enabled: boolean;
@@ -13,12 +13,16 @@ export interface AIConfig {
 
   // Usage tracking
   requestCount: number;
+  totalTokensUsed: number;
   lastUsed?: Date;
 
   // Feature flags
-  autoSuggest?: boolean;
-  smartCategorization?: boolean;
-  voiceInput?: boolean;
+  autoCategory?: boolean;
+  todoImprovement?: boolean;
+  prioritySuggestion?: boolean;
+  dueDateSuggestion?: boolean;
+  subtaskGeneration?: boolean;
+  tagSuggestion?: boolean;
 }
 
 export interface AIModel {
@@ -31,16 +35,41 @@ export interface AIModel {
   contextWindow: number;
 }
 
+export type AIFeatureType = 'auto-category' | 'improve' | 'priority' | 'due-date' | 'subtasks' | 'tags';
+
 export interface AIFeature {
-  id: 'improve' | 'expand' | 'summarize' | 'subtasks' | 'priority' | 'duedate';
+  id: AIFeatureType;
   label: string;
   description: string;
   icon: string;
+  enabled: boolean;
 }
 
-export interface AIResponse {
+export interface AIResponse<T = any> {
   success: boolean;
-  result?: string;
+  result?: T;
   error?: string;
   tokensUsed?: number;
 }
+
+export interface CategorySuggestion {
+  category: string;
+  confidence: number;
+}
+
+export interface TodoImprovement {
+  title?: string;
+  description?: string;
+  tags?: string[];
+}
+
+export interface PrioritySuggestion {
+  priority: 'low' | 'medium' | 'high';
+  reason: string;
+}
+
+export interface DueDateSuggestion {
+  dueDate: Date;
+  reason: string;
+}
+

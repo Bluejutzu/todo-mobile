@@ -22,19 +22,26 @@ const defaultPreferences: UserPreferences = {
   onboardingCompleted: false,
   notificationsEnabled: false,
   ai: {
-    provider: 'google',
-    model: 'gemini-pro',
-    enabled: true,
+    provider: 'openrouter',
+    model: 'meta-llama/llama-3.3-70b-instruct:free',
+    enabled: false,
     requestCount: 0,
-    autoSuggest: true,
-    smartCategorization: true,
-    voiceInput: false,
+    totalTokensUsed: 0,
+    autoCategory: true,
+    todoImprovement: true,
+    prioritySuggestion: true,
+    dueDateSuggestion: false,
+    subtaskGeneration: true,
+    tagSuggestion: true,
   },
   permissions: {
     notifications: 'undetermined',
     calendar: 'undetermined',
     photos: 'undetermined',
     contacts: 'undetermined',
+  },
+  storage: {
+    deleteMode: 'soft',
   },
 };
 

@@ -134,8 +134,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   buttonTextInactive: {
-    color: '#666666', // Placeholder, will be overridden or we need to access theme colors here?
-    // We can't access theme colors in StyleSheet.create.
-    // So we might need to keep the inline style but maybe the linter just wants it to be a const?
+    color: '#666666', 
   },
 });

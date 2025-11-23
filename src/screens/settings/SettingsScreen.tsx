@@ -13,7 +13,6 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
-import { Input } from '../../components/common/Input';
 import { useUserStore } from '../../stores/userStore';
 import { getThemeColors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
@@ -23,16 +22,16 @@ import { storage } from '../../services/storage';
 import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import { getAvailableThemes, getThemeDisplayName, themes } from '../../theme/colors';
+import { AISettingsPanel } from '../../components/ai/AISettingsPanel';
 
 export function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const preferences = useUserStore(state => state.preferences);
-  const { setTheme, setAIEnabled, setApiKey } = useUserStore();
+  const { setTheme } = useUserStore();
 
   const themeColors = getThemeColors(theme);
 
-  const [apiKey, setApiKeyLocal] = useState(preferences?.ai?.openRouterKey || '');
   const [storagePath, setStoragePath] = useState<string | null>(null);
   const [migrating, setMigrating] = useState(false);
   const [storageMethod, setStorageMethodState] = useState<'cloud' | 'local'>('local');
@@ -141,10 +140,6 @@ export function SettingsScreen() {
     );
   };
 
-  const handleSaveApiKey = async () => {
-    await setApiKey(apiKey);
-  };
-
   return (
     <ScrollView
       style={[
@@ -224,31 +219,7 @@ export function SettingsScreen() {
       </Card>
 
       {/* AI Features Section */}
-      <Card style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: themeColors.text }]}>AI Features</Text>
-        <View style={styles.row}>
-          <Text style={[styles.label, { color: themeColors.text }]}>Enable AI</Text>
-          <Switch
-            value={preferences?.ai?.enabled || false}
-            onValueChange={setAIEnabled}
-            trackColor={{ false: themeColors.border, true: themeColors.primary }}
-            thumbColor="#ffffff"
-          />
-        </View>
-
-        {preferences?.ai?.enabled && (
-          <>
-            <Input
-              label="OpenRouter API Key"
-              value={apiKey}
-              onChangeText={setApiKeyLocal}
-              placeholder="sk-or-..."
-              secureTextEntry={true}
-            />
-            <Button title="Save API Key" onPress={handleSaveApiKey} variant="secondary" />
-          </>
-        )}
-      </Card>
+      <AISettingsPanel />
 
       {/* Storage Method Section */}
       <Card style={styles.section}>
@@ -282,8 +253,32 @@ export function SettingsScreen() {
             title={`Switch to ${storageMethod === 'cloud' ? 'Local' : 'Cloud'} Storage`}
             onPress={handleSwitchStorage}
             variant="secondary"
+            style={styles.swichButton}
           />
         )}
+
+        <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
+
+        <Text style={[styles.label, { color: themeColors.text, marginBottom: spacing.sm }]}>
+          Delete Behavior
+        </Text>
+        <View style={styles.row}>
+          <Text style={[styles.bodyText, { color: themeColors.textSecondary }, styles.flex1]}>
+            {preferences?.storage?.deleteMode === 'hard'
+              ? 'Permanently delete items'
+              : 'Archive items (Soft Delete)'}
+          </Text>
+          <Switch
+            value={preferences?.storage?.deleteMode !== 'hard'}
+            onValueChange={(value) =>
+              useUserStore.getState().updatePreferences({
+                storage: { ...preferences?.storage, deleteMode: value ? 'soft' : 'hard' }
+              })
+            }
+            trackColor={{ false: themeColors.border, true: themeColors.primary }}
+            thumbColor="#ffffff"
+          />
+        </View>
       </Card>
 
       {/* Data Storage Location (only for local) */}
@@ -424,4 +419,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontStyle: 'italic',
   },
+  divider: {
+    height: 1,
+    marginVertical: spacing.md,
+  },
+  flex1: {
+    flex: 1,
+  },
+  swichButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.xs,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
+    },
 });

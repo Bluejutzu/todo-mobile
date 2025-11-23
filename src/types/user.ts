@@ -13,6 +13,11 @@ export interface UserPreferences {
 
   // Permissions
   permissions: PermissionStatus;
+
+  // Storage Configuration
+  storage: {
+    deleteMode: 'soft' | 'hard';
+  };
 }
 
 export interface User {

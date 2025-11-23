@@ -39,6 +39,8 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress }: TodoItemProps
     });
   };
 
+  const priorityColor = getPriorityColor(todo.priority);
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -46,79 +48,84 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress }: TodoItemProps
       activeOpacity={0.7}
       delayLongPress={500}
     >
-      <Card
-        style={[
-          styles.card,
-          styles.borderLeft,
-          { borderLeftColor: todo.color || themeColors.primary },
-        ]}
-      >
-        <View style={styles.container}>
-          <TouchableOpacity
-            style={[
-              styles.checkbox,
-              {
-                borderColor: getPriorityColor(todo.priority),
-              },
-              todo.completed && { backgroundColor: themeColors.success },
-              todo.completed && { borderColor: themeColors.success },
-            ]}
-            onPress={onToggle}
-          >
-            {todo.completed && (
-              <Ionicons name="checkmark" size={16} color={themeColors.onPrimary} />
-            )}
-          </TouchableOpacity>
+      <Card style={styles.card}>
+        <View style={styles.headerRow}>
+          <View style={styles.leftHeader}>
+            <TouchableOpacity
+              style={[
+                styles.checkbox,
+                { borderColor: priorityColor },
+                todo.completed && { backgroundColor: priorityColor, borderColor: priorityColor },
+              ]}
+              onPress={onToggle}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              {todo.completed && (
+                <Ionicons name="checkmark" size={14} color="#fff" />
+              )}
+            </TouchableOpacity>
 
-          <View style={styles.content}>
             <Text
               style={[
                 styles.title,
-                {
-                  color: todo.completed ? themeColors.textSecondary : themeColors.text,
-                },
-                // eslint-disable-next-line react-native/no-inline-styles
-                todo.completed && { textDecorationLine: 'line-through' },
+                { color: todo.completed ? themeColors.textSecondary : themeColors.text },
+                todo.completed && styles.completedTitle,
               ]}
               numberOfLines={1}
             >
               {todo.title}
             </Text>
-            {todo.dueDate && (
-              <Text style={[styles.date, { color: themeColors.textSecondary }]}>
-                {new Date(todo.dueDate).toLocaleDateString()}
-              </Text>
-            )}
-            {todo.description && (
-              <Text
-                style={[
-                  styles.description,
-                  { color: themeColors.textSecondary },
-                  todo.completed && styles.completedOpacity,
-                ]}
-                numberOfLines={2}
-              >
-                {todo.description}
-              </Text>
-            )}
-
-            <View style={styles.footer}>
-              {todo.dueDate && (
-                <View style={styles.metaItem}>
-                  <Text style={[styles.metaText, { color: themeColors.textSecondary }]}>
-                    📅 {formatDate(todo.dueDate)}
-                  </Text>
-                </View>
-              )}
-              {todo.category && (
-                <View style={styles.metaItem}>
-                  <Text style={[styles.metaText, { color: themeColors.textSecondary }]}>
-                    🏷️ {todo.category}
-                  </Text>
-                </View>
-              )}
-            </View>
           </View>
+
+          <View style={styles.priorityContainer}>
+            <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
+            <Text style={[styles.priorityText, { color: themeColors.textSecondary }]}>
+              {todo.priority}
+            </Text>
+          </View>
+        </View>
+
+        {todo.description && (
+          <Text
+            style={[
+              styles.description,
+              { color: themeColors.textSecondary },
+              todo.completed && styles.completedDescription,
+            ]}
+            numberOfLines={2}
+          >
+            {todo.description}
+          </Text>
+        )}
+
+        <View style={styles.footer}>
+          <View style={styles.footerLeft}>
+            {todo.dueDate && (
+              <View style={styles.footerItem}>
+                <Ionicons name="calendar-outline" size={12} color={themeColors.textSecondary} />
+                <Text style={[styles.footerText, { color: themeColors.textSecondary }]}>
+                  {formatDate(todo.dueDate)}
+                </Text>
+              </View>
+            )}
+            {todo.category && (
+              <View style={styles.footerItem}>
+                {todo.dueDate && <Text style={[styles.footerText, { color: themeColors.textSecondary }]}> • </Text>}
+                <Ionicons name="pricetag-outline" size={12} color={themeColors.textSecondary} />
+                <Text style={[styles.footerText, { color: themeColors.textSecondary }]}>
+                  {todo.category}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Keep tags/subtasks as chips if needed, or just hide them for now based on "instead of everything being in chips" */}
+          {/* I'll keep subtasks as a small indicator if present */}
+          {todo.subtasks && todo.subtasks.length > 0 && (
+            <Text style={[styles.footerText, { color: themeColors.textSecondary, marginLeft: spacing.sm }]}>
+              {todo.subtasks.filter(t => t.completed).length}/{todo.subtasks.length} subtasks
+            </Text>
+          )}
         </View>
       </Card>
     </TouchableOpacity>
@@ -128,55 +135,81 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress }: TodoItemProps
 const styles = StyleSheet.create({
   card: {
     marginBottom: spacing.sm,
-    overflow: 'hidden',
-  },
-  container: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     padding: spacing.md,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  leftHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: spacing.sm,
+  },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
-    marginTop: 2,
-  },
-  borderLeft: {
-    borderLeftWidth: 4,
-  },
-  completedOpacity: {
-    opacity: 0.5,
-  },
-  content: {
-    flex: 1,
   },
   title: {
     ...typography.body,
     fontWeight: '600',
     flex: 1,
-    marginRight: spacing.sm,
+    fontSize: 16,
+  },
+  completedTitle: {
+    textDecorationLine: 'line-through',
+    opacity: 0.7,
+  },
+  priorityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  priorityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 4,
+  },
+  priorityText: {
+    ...typography.caption,
+    textTransform: 'capitalize',
+    fontWeight: '500',
   },
   description: {
     ...typography.bodySmall,
     marginBottom: spacing.sm,
+    marginLeft: 34, // Align with title
+    lineHeight: 20,
   },
-  date: {
-    ...typography.caption,
-    marginBottom: spacing.xs,
+  completedDescription: {
+    opacity: 0.5,
   },
   footer: {
     flexDirection: 'row',
-    gap: spacing.md,
+    alignItems: 'center',
+    marginLeft: 34, // Align with title
+    flexWrap: 'wrap',
   },
-  metaItem: {
+  footerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.xs,
   },
-  metaText: {
+  footerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  footerText: {
     ...typography.caption,
+    fontSize: 12,
   },
 });

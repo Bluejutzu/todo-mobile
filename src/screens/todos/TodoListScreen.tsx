@@ -1,15 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
   StyleSheet,
   TouchableOpacity,
-  Share,
   Alert,
   ActivityIndicator,
   Modal,
   Pressable,
+  LayoutAnimation,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,7 +21,7 @@ import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
 import { TodoModal } from '../../components/todo/TodoModal';
-import { TodoActionSheet } from '../../components/todo/TodoActionSheet';
+import { TodoDetailModal } from '../../components/todo/TodoDetailModal';
 import type { Todo } from '../../types/todo';
 import { useTodoStore } from '../../stores/todoStore';
 
@@ -37,9 +37,13 @@ export function TodoListScreen() {
   }, []);
 
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showActionSheet, setShowActionSheet] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | undefined>(undefined);
   const [selectedTodo, setSelectedTodo] = useState<Todo | undefined>(undefined);
+
+  // Grouping State
+  const [groupByCategory, setGroupByCategory] = useState(true);
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
 
   const handleAddTodo = () => {
     setEditingTodo(undefined);
@@ -53,7 +57,7 @@ export function TodoListScreen() {
 
   const handleLongPress = (todo: Todo) => {
     setSelectedTodo(todo);
-    setShowActionSheet(true);
+    setShowDetailModal(true);
   };
 
   const handleSaveTodo = async (todoData: Partial<Todo>) => {
@@ -80,7 +84,7 @@ export function TodoListScreen() {
         style: 'destructive',
         onPress: async () => {
           await deleteTodo(selectedTodo.id);
-          setShowActionSheet(false);
+          setShowDetailModal(false);
         },
       },
     ]);
@@ -89,19 +93,7 @@ export function TodoListScreen() {
   const handleDuplicateTodo = async () => {
     if (!selectedTodo) return;
     await duplicateTodo(selectedTodo.id);
-    setShowActionSheet(false);
-  };
-
-  const handleShareTodo = async () => {
-    if (!selectedTodo) return;
-    try {
-      await Share.share({
-        message: `${selectedTodo.title} \n${selectedTodo.description || ''} `,
-      });
-    } catch (error) {
-      console.error(error);
-    }
-    setShowActionSheet(false);
+    setShowDetailModal(false);
   };
 
   const handleTogglePriority = async () => {
@@ -110,13 +102,66 @@ export function TodoListScreen() {
     const currentIndex = priorities.indexOf(selectedTodo.priority);
     const nextPriority = priorities[(currentIndex + 1) % priorities.length];
     await updateTodo(selectedTodo.id, { priority: nextPriority });
-    // Don't close sheet to allow seeing change? Or close it?
-    // Better to close it as it's an action.
-    setShowActionSheet(false);
+    setShowDetailModal(false);
   };
 
-  const activeTodos = todos.filter(t => !t.completed);
-  const completedTodos = todos.filter(t => t.completed);
+  // Grouping & Filtering Logic
+  const processedSections = useMemo(() => {
+    // 1. Filter out deleted todos
+    const filtered = todos.filter(t => !t.deletedAt);
+
+    // 2. Sort: Active first, then Completed (always at bottom)
+    const sortTodos = (list: Todo[]) => {
+      return list.sort((a, b) => {
+        if (a.completed === b.completed) {
+          // Secondary sort: Created date (newest first)
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        }
+        return a.completed ? 1 : -1;
+      });
+    };
+
+    if (!groupByCategory) {
+      return [{ title: 'All Todos', data: sortTodos(filtered) }];
+    }
+
+    // Group by Category
+    const groups: Record<string, Todo[]> = {};
+    const uncategorized: Todo[] = [];
+
+    filtered.forEach(todo => {
+      if (todo.category) {
+        if (!groups[todo.category]) groups[todo.category] = [];
+        groups[todo.category].push(todo);
+      } else {
+        uncategorized.push(todo);
+      }
+    });
+
+    const sections = Object.keys(groups)
+      .sort()
+      .map(category => ({
+        title: category,
+        data: sortTodos(groups[category]),
+      }));
+
+    if (uncategorized.length > 0) {
+      sections.push({ title: 'Uncategorized', data: sortTodos(uncategorized) });
+    }
+
+    return sections;
+  }, [todos, groupByCategory]);
+
+  const toggleCategory = (category: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setCollapsedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category],
+    }));
+  };
+
+  const activeTodosCount = todos.filter(t => !t.completed && !t.deletedAt).length;
+  const completedTodosCount = todos.filter(t => t.completed && !t.deletedAt).length;
 
   const insets = useSafeAreaInsets();
   const [showSyncTooltip, setShowSyncTooltip] = useState(false);
@@ -196,35 +241,67 @@ export function TodoListScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={[styles.title, { color: themeColors.text }]}>My Todos</Text>
-          <TouchableOpacity onPress={() => setShowSyncTooltip(true)} style={styles.syncButton}>
-            <Ionicons name={getSyncIcon()} size={24} color={getSyncColor()} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => setGroupByCategory(!groupByCategory)}
+              style={styles.iconButton}
+            >
+              <Ionicons
+                name={groupByCategory ? "layers" : "list"}
+                size={24}
+                color={themeColors.primary}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowSyncTooltip(true)} style={styles.iconButton}>
+              <Ionicons name={getSyncIcon()} size={24} color={getSyncColor()} />
+            </TouchableOpacity>
+          </View>
         </View>
         <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
-          {activeTodos.length} active, {completedTodos.length} completed
+          {activeTodosCount} active, {completedTodosCount} completed
         </Text>
       </View>
 
-      {todos.length === 0 ? (
+      {todos.filter(t => !t.deletedAt).length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
             No todos yet. Create your first one!
           </Text>
         </View>
       ) : (
-        <FlatList
-          data={todos}
+        <SectionList
+          sections={processedSections}
           keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <TodoItem
-              todo={item}
-              onPress={() => handleTodoPress(item.id)}
-              onToggle={() => toggleComplete(item.id)}
-              onLongPress={() => handleLongPress(item)}
-            />
-          )}
+          renderItem={({ item, section }) => {
+            if (groupByCategory && collapsedCategories[section.title]) return null;
+            return (
+              <TodoItem
+                todo={item}
+                onPress={() => handleTodoPress(item.id)}
+                onToggle={() => toggleComplete(item.id)}
+                onLongPress={() => handleLongPress(item)}
+              />
+            );
+          }}
+          renderSectionHeader={({ section: { title } }) => {
+            if (!groupByCategory) return null;
+            return (
+              <TouchableOpacity
+                style={[styles.sectionHeader, { backgroundColor: themeColors.background }]}
+                onPress={() => toggleCategory(title)}
+              >
+                <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{title}</Text>
+                <Ionicons
+                  name={collapsedCategories[title] ? "chevron-forward" : "chevron-down"}
+                  size={20}
+                  color={themeColors.textSecondary}
+                />
+              </TouchableOpacity>
+            );
+          }}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={false}
         />
       )}
 
@@ -234,7 +311,7 @@ export function TodoListScreen() {
           onPress={handleAddTodo}
           activeOpacity={0.8}
         >
-          <Text style={styles.fabIcon}>+</Text>
+          <Text style={[styles.fabIcon, { color: themeColors.onPrimary }]}>+</Text>
         </TouchableOpacity>
       </View>
 
@@ -245,15 +322,19 @@ export function TodoListScreen() {
         onSave={handleSaveTodo}
       />
 
-      <TodoActionSheet
-        visible={showActionSheet}
+      <TodoDetailModal
+        visible={showDetailModal}
         todo={selectedTodo}
-        onClose={() => setShowActionSheet(false)}
+        onClose={() => setShowDetailModal(false)}
         onEdit={() => handleEditTodo(selectedTodo!)}
         onDelete={handleDeleteTodo}
         onDuplicate={handleDuplicateTodo}
-        onShare={handleShareTodo}
         onTogglePriority={handleTogglePriority}
+        onToggleComplete={() => {
+          if (selectedTodo) {
+            toggleComplete(selectedTodo.id);
+          }
+        }}
       />
       {/* Bottom Sync Progress */}
       {(syncStatus === 'syncing' || pendingCount > 0) && (
@@ -291,11 +372,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xs,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   title: {
     ...typography.h1,
   },
-  syncButton: {
+  iconButton: {
     padding: 8,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  sectionTitle: {
+    ...typography.h3,
+    fontSize: 18,
   },
   tooltipOverlay: {
     flex: 1,
@@ -380,7 +477,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   fabIcon: {
-    color: '#ffffff',
     fontSize: 32,
     fontWeight: '300',
   },

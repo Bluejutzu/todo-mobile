@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   },
   otherThemes: {
     flexDirection: 'row',
-    marginHorizontal: -4, // Compensate for padding in items if needed, or just let it scroll
+    marginHorizontal: -4
   },
   themeOption: {
     flex: 1,

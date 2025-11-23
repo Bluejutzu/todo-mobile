@@ -7,15 +7,21 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput as RNTextInput,
+  Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Input } from '../common/Input';
 import { DatePicker } from '../common/DatePicker';
 import { ColorPicker } from '../common/ColorPicker';
+import { AILoadingIndicator } from '../ai/AILoadingIndicator';
 import { useUserStore } from '../../stores/userStore';
+import { useTodoStore } from '../../stores/todoStore';
 import { getThemeColors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import type { Todo, TodoPriority } from '../../types/todo';
+import type { AIConfig } from '../../types/ai';
+import { aiService } from '../../services/ai';
 
 interface TodoModalProps {
   visible: boolean;
@@ -32,7 +38,10 @@ const PRIORITIES: { value: TodoPriority; label: string; color: string }[] = [
 
 export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
+  const preferences = useUserStore(state => state.preferences);
+  const { updatePreferences } = useUserStore();
   const themeColors = getThemeColors(theme);
+  const todos = useTodoStore(state => state.todos);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -40,6 +49,10 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [category, setCategory] = useState('');
   const [color, setColor] = useState<string>('#6366f1');
+
+  // AI State
+  const [isAIProcessing, setIsAIProcessing] = useState(false);
+  const [aiMessage, setAiMessage] = useState('');
 
   useEffect(() => {
     if (todo) {
@@ -58,7 +71,108 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
       setCategory('');
       setColor('#6366f1');
     }
+    setIsAIProcessing(false);
+    setAiMessage('');
   }, [todo, visible]);
+
+
+  const handleImproveWithAI = async () => {
+    if (!title.trim()) {
+      Alert.alert('Error', 'Please enter a title first');
+      return;
+    }
+
+    console.log('[TodoModal] Starting AI improvement...');
+    setIsAIProcessing(true);
+    setAiMessage('Improving todo with AI...');
+
+    let totalTokens = 0;
+    let requestsMade = 0;
+
+    try {
+      const currentTodo = { title, description, category, priority, dueDate };
+
+      // Improve todo
+      if (preferences?.ai?.todoImprovement) {
+        setAiMessage('Enhancing title and description...');
+        const improvementResult = await aiService.improveTodo(currentTodo, todos, {
+          userApiKey: preferences?.ai?.openRouterKey,
+          model: preferences?.ai?.model,
+        });
+
+        if (improvementResult.success && improvementResult.result) {
+          console.log('[TodoModal] Improvement result:', improvementResult.result);
+          if (improvementResult.result.title) setTitle(improvementResult.result.title);
+          if (improvementResult.result.description) setDescription(improvementResult.result.description);
+          if (improvementResult.tokensUsed) totalTokens += improvementResult.tokensUsed;
+          requestsMade++;
+        } else {
+          console.error('[TodoModal] Improvement failed:', improvementResult.error);
+        }
+      }
+
+      // Suggest category
+      if (preferences?.ai?.autoCategory && !category) {
+        setAiMessage('Suggesting category...');
+        const categoryResult = await aiService.suggestCategory(currentTodo, todos, {
+          userApiKey: preferences?.ai?.openRouterKey,
+          model: preferences?.ai?.model,
+        });
+
+        if (categoryResult.success && categoryResult.result) {
+          console.log('[TodoModal] Category suggestion:', categoryResult.result);
+          setCategory(categoryResult.result.category);
+          if (categoryResult.tokensUsed) totalTokens += categoryResult.tokensUsed;
+          requestsMade++;
+        } else {
+          console.error('[TodoModal] Category suggestion failed:', categoryResult.error);
+        }
+      }
+
+      // Suggest priority
+      if (preferences?.ai?.prioritySuggestion) {
+        setAiMessage('Analyzing priority...');
+        const priorityResult = await aiService.suggestPriority(currentTodo, todos, {
+          userApiKey: preferences?.ai?.openRouterKey,
+          model: preferences?.ai?.model,
+        });
+
+        if (priorityResult.success && priorityResult.result) {
+          console.log('[TodoModal] Priority suggestion:', priorityResult.result);
+          setPriority(priorityResult.result.priority);
+          if (priorityResult.tokensUsed) totalTokens += priorityResult.tokensUsed;
+          requestsMade++;
+        } else {
+          console.error('[TodoModal] Priority suggestion failed:', priorityResult.error);
+        }
+      }
+
+      // Update usage statistics
+      if (requestsMade > 0 && preferences?.ai) {
+        const currentAI = preferences.ai;
+        updatePreferences({
+          ai: {
+            ...currentAI,
+            requestCount: (currentAI.requestCount || 0) + requestsMade,
+            totalTokensUsed: (currentAI.totalTokensUsed || 0) + totalTokens,
+            lastUsed: new Date(),
+          } as AIConfig,
+        });
+        console.log(`[TodoModal] Updated usage: +${requestsMade} requests, +${totalTokens} tokens`);
+      }
+
+      setAiMessage('AI improvements applied!');
+      setTimeout(() => {
+        setIsAIProcessing(false);
+        setAiMessage('');
+      }, 1500);
+    } catch (error) {
+      console.error('[TodoModal] AI improvement error:', error);
+      Alert.alert('Error', 'Failed to improve todo with AI');
+      setIsAIProcessing(false);
+      setAiMessage('');
+    }
+  };
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -123,6 +237,22 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
             placeholder="What needs to be done?"
             autoFocus
           />
+
+          {/* AI Improve Button */}
+          {preferences?.ai?.enabled && (
+            <TouchableOpacity
+              style={[styles.aiButton, { backgroundColor: themeColors.primary }]}
+              onPress={handleImproveWithAI}
+              disabled={isAIProcessing || !title.trim()}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="sparkles" size={18} color={themeColors.onPrimary} />
+              <Text style={[styles.aiButtonText, { color: themeColors.onPrimary }]}>Improve with AI</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* AI Loading Indicator */}
+          {isAIProcessing && <AILoadingIndicator message={aiMessage} />}
 
           {/* Description */}
           <View style={styles.field}>
@@ -262,6 +392,20 @@ const styles = StyleSheet.create({
   },
   priorityText: {
     ...typography.bodySmall,
+    fontWeight: '600',
+  },
+  aiButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.sm,
+    marginBottom: spacing.md,
+  },
+  aiButtonText: {
+    ...typography.body,
     fontWeight: '600',
   },
 });

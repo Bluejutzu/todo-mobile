@@ -15,6 +15,7 @@ export interface Todo {
   createdAt: Date;
   updatedAt: Date;
   completedAt?: Date;
+  deletedAt?: Date;
 }
 
 export interface Subtask {

@@ -80,7 +80,7 @@ export function DatePicker({
                 value={tempDate}
                 mode="date"
                 display="spinner"
-                onChange={(event, selectedDate) => {
+                onChange={(_, selectedDate) => {
                   if (selectedDate) setTempDate(selectedDate);
                 }}
                 textColor={themeColors.text}

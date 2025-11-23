@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#000000', // Will be overridden by theme if needed, but white/black border looks good
+    borderColor: '#000000', // Will be overridden by theme if needed
   },
   sectionHeader: {
     flexDirection: 'row',
