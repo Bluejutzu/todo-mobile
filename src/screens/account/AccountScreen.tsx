@@ -372,8 +372,16 @@ export function AccountScreen() {
           />
           <Text style={[styles.bodyText, styles.dangerText, { color: colors.textSecondary }]}>
             Deleting your account will permanently remove all your data including todos,
-            preferences, and account information from our cloud storage. This action cannot be
+            preferences, and account information from our cloud storage and account provider (Clerk). This action cannot be
             undone.
+
+            {!showExportReminder && (
+              <Text style={[styles.bodyText, { color: colors.text }]}>
+                {"\n\n"}
+                If you need to create a new backup, but are unable to, contact support.
+              </Text>
+            )}
+
           </Text>
           <Button
             title="Delete Account"

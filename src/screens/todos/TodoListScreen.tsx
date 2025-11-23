@@ -6,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
   Modal,
   Pressable,
   LayoutAnimation,
@@ -29,7 +28,7 @@ export function TodoListScreen() {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const themeColors = getThemeColors(theme);
 
-  const { todos, loadTodos, addTodo, updateTodo, deleteTodo, duplicateTodo, toggleComplete } =
+  const { todos, loadTodos, addTodo, updateTodo, deleteTodo, duplicateTodo, toggleComplete, bulkComplete, bulkDelete, bulkUpdatePriority } =
     useTodoStore();
 
   useEffect(() => {
@@ -44,6 +43,10 @@ export function TodoListScreen() {
   // Grouping State
   const [groupByCategory, setGroupByCategory] = useState(true);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+  // Multi-select State
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedTodos, setSelectedTodos] = useState<Set<string>>(new Set());
 
   const handleAddTodo = () => {
     setEditingTodo(undefined);
@@ -103,6 +106,71 @@ export function TodoListScreen() {
     const nextPriority = priorities[(currentIndex + 1) % priorities.length];
     await updateTodo(selectedTodo.id, { priority: nextPriority });
     setShowDetailModal(false);
+  };
+
+  // Multi-select Handlers
+  const toggleSelectionMode = () => {
+    setSelectionMode(!selectionMode);
+    setSelectedTodos(new Set());
+  };
+
+  const toggleTodoSelection = (todoId: string) => {
+    const newSelected = new Set(selectedTodos);
+    if (newSelected.has(todoId)) {
+      newSelected.delete(todoId);
+    } else {
+      newSelected.add(todoId);
+    }
+    setSelectedTodos(newSelected);
+  };
+
+  const handleBulkComplete = async () => {
+    await bulkComplete(Array.from(selectedTodos), true);
+    setSelectionMode(false);
+    setSelectedTodos(new Set());
+  };
+
+  const handleBulkIncomplete = async () => {
+    await bulkComplete(Array.from(selectedTodos), false);
+    setSelectionMode(false);
+    setSelectedTodos(new Set());
+  };
+
+  const handleBulkDelete = () => {
+    Alert.alert(
+      'Delete Todos',
+      `Are you sure you want to delete ${selectedTodos.size} todo(s)?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await bulkDelete(Array.from(selectedTodos));
+            setSelectionMode(false);
+            setSelectedTodos(new Set());
+          },
+        },
+      ]
+    );
+  };
+
+  const handleBulkPriority = (priority: string) => {
+    Alert.alert(
+      'Change Priority',
+      `Set priority to ${priority} for ${selectedTodos.size} todo(s)?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: async () => {
+            await bulkUpdatePriority(Array.from(selectedTodos), priority);
+            setSelectionMode(false);
+            setSelectedTodos(new Set());
+          },
+        },
+      ]
+    );
   };
 
   // Grouping & Filtering Logic
@@ -243,6 +311,16 @@ export function TodoListScreen() {
           <Text style={[styles.title, { color: themeColors.text }]}>My Todos</Text>
           <View style={styles.headerActions}>
             <TouchableOpacity
+              onPress={toggleSelectionMode}
+              style={styles.iconButton}
+            >
+              <Ionicons
+                name={selectionMode ? "checkmark-done" : "checkbox-outline"}
+                size={24}
+                color={themeColors.text}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={() => setGroupByCategory(!groupByCategory)}
               style={styles.iconButton}
             >
@@ -258,7 +336,9 @@ export function TodoListScreen() {
           </View>
         </View>
         <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
-          {activeTodosCount} active, {completedTodosCount} completed
+          {selectionMode
+            ? `${selectedTodos.size} selected`
+            : `${activeTodosCount} active, ${completedTodosCount} completed`}
         </Text>
       </View>
 
@@ -277,9 +357,11 @@ export function TodoListScreen() {
             return (
               <TodoItem
                 todo={item}
-                onPress={() => handleTodoPress(item.id)}
+                onPress={() => selectionMode ? toggleTodoSelection(item.id) : handleTodoPress(item.id)}
                 onToggle={() => toggleComplete(item.id)}
-                onLongPress={() => handleLongPress(item)}
+                onLongPress={selectionMode ? undefined : () => handleLongPress(item)}
+                selectionMode={selectionMode}
+                isSelected={selectedTodos.has(item.id)}
               />
             );
           }}
@@ -305,15 +387,41 @@ export function TodoListScreen() {
         />
       )}
 
-      <View style={styles.fab}>
-        <TouchableOpacity
-          style={[styles.fabButton, { backgroundColor: themeColors.primary }]}
-          onPress={handleAddTodo}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.fabIcon, { color: themeColors.onPrimary }]}>+</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Bulk Action Bar */}
+      {selectionMode && selectedTodos.size > 0 && (
+        <View style={[styles.bulkActionBar, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
+          <TouchableOpacity style={styles.bulkAction} onPress={handleBulkComplete}>
+            <Ionicons name="checkmark-circle-outline" size={24} color={themeColors.success} />
+            <Text style={[styles.bulkActionText, { color: themeColors.text }]}>Complete</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.bulkAction} onPress={handleBulkIncomplete}>
+            <Ionicons name="close-circle-outline" size={24} color={themeColors.textSecondary} />
+            <Text style={[styles.bulkActionText, { color: themeColors.text }]}>Incomplete</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.bulkAction} onPress={() => handleBulkPriority('high')}>
+            <Ionicons name="flag-outline" size={24} color="#ef4444" />
+            <Text style={[styles.bulkActionText, { color: themeColors.text }]}>High</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.bulkAction} onPress={handleBulkDelete}>
+            <Ionicons name="trash-outline" size={24} color={themeColors.error} />
+            <Text style={[styles.bulkActionText, { color: themeColors.text }]}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {
+        !selectionMode && (
+          <View style={styles.fab}>
+            <TouchableOpacity
+              style={[styles.fabButton, { backgroundColor: themeColors.primary }]}
+              onPress={handleAddTodo}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.fabIcon, { color: themeColors.onPrimary }]}>+</Text>
+            </TouchableOpacity>
+          </View>
+        )
+      }
 
       <TodoModal
         visible={showAddModal}
@@ -336,24 +444,6 @@ export function TodoListScreen() {
           }
         }}
       />
-      {/* Bottom Sync Progress */}
-      {(syncStatus === 'syncing' || pendingCount > 0) && (
-        <View
-          style={[
-            styles.bottomProgress,
-            { backgroundColor: themeColors.surface, borderTopColor: themeColors.border },
-          ]}
-        >
-          <Text style={[styles.bottomProgressText, { color: themeColors.textSecondary }]}>
-            {syncStatus === 'syncing'
-              ? 'Syncing...'
-              : `${pendingCount} item${pendingCount !== 1 ? 's' : ''} waiting to sync`}
-          </Text>
-          {syncStatus === 'syncing' && (
-            <ActivityIndicator size="small" color={themeColors.primary} style={styles.loader} />
-          )}
-        </View>
-      )}
     </View>
   );
 }
@@ -429,19 +519,6 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     marginTop: 4,
   },
-  bottomProgress: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.sm,
-    borderTopWidth: 1,
-  },
-  bottomProgressText: {
-    ...typography.bodySmall,
-  },
-  loader: {
-    marginLeft: 8,
-  },
   subtitle: {
     ...typography.bodySmall,
   },
@@ -479,5 +556,28 @@ const styles = StyleSheet.create({
   fabIcon: {
     fontSize: 32,
     fontWeight: '300',
+  },
+  bulkActionBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: spacing.md,
+    borderTopWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  bulkAction: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  bulkActionText: {
+    ...typography.bodySmall,
+    fontSize: 11,
   },
 });

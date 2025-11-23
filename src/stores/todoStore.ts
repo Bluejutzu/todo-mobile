@@ -19,6 +19,9 @@ interface TodoStore {
   deleteTodo: (id: string) => Promise<void>;
   toggleComplete: (id: string) => Promise<void>;
   duplicateTodo: (id: string) => Promise<void>;
+  bulkComplete: (ids: string[], completed: boolean) => Promise<void>;
+  bulkDelete: (ids: string[]) => Promise<void>;
+  bulkUpdatePriority: (ids: string[], priority: string) => Promise<void>;
 }
 
 export const useTodoStore = create<TodoStore>((set, get) => ({
@@ -75,7 +78,6 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   },
 
   deleteTodo: async (id: string) => {
-    // Dynamic import to avoid circular dependency if any (though likely none here as userStore doesn't import todoStore)
     const { useUserStore } = require('./userStore');
     const deleteMode = useUserStore.getState().preferences?.storage?.deleteMode || 'soft';
 
@@ -108,21 +110,46 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
   },
 
   duplicateTodo: async (id: string) => {
-    const original = get().todos.find(t => t.id === id);
-    if (!original) return;
+    const todo = get().todos.find(t => t.id === id);
+    if (!todo) return;
 
-    const duplicate: Todo = {
-      ...original,
+    const newTodo: Todo = {
+      ...todo,
       id: uuid.v4() as string,
-      title: `${original.title} (Copy)`,
+      title: `${todo.title} (Copy)`,
       completed: false,
-      completedAt: undefined,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    const todos = [...get().todos, duplicate];
-    set({ todos });
-    await storage.saveTodos(todos, get().getToken);
+    const newTodos = [newTodo, ...get().todos];
+    set({ todos: newTodos });
+    await storage.saveTodos(newTodos, get().getToken);
+  },
+
+  bulkComplete: async (ids: string[], completed: boolean) => {
+    const updatedTodos = get().todos.map(todo =>
+      ids.includes(todo.id)
+        ? { ...todo, completed, updatedAt: new Date() }
+        : todo
+    );
+    set({ todos: updatedTodos });
+    await storage.saveTodos(updatedTodos, get().getToken);
+  },
+
+  bulkDelete: async (ids: string[]) => {
+    const updatedTodos = get().todos.filter(todo => !ids.includes(todo.id));
+    set({ todos: updatedTodos });
+    await storage.saveTodos(updatedTodos, get().getToken);
+  },
+
+  bulkUpdatePriority: async (ids: string[], priority: string) => {
+    const updatedTodos = get().todos.map(todo =>
+      ids.includes(todo.id)
+        ? { ...todo, priority: priority as Todo['priority'], updatedAt: new Date() }
+        : todo
+    );
+    set({ todos: updatedTodos });
+    await storage.saveTodos(updatedTodos, get().getToken);
   },
 }));

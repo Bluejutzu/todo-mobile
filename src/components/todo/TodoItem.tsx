@@ -13,9 +13,11 @@ interface TodoItemProps {
   onPress: () => void;
   onToggle: () => void;
   onLongPress?: () => void;
+  selectionMode?: boolean;
+  isSelected?: boolean;
 }
 
-export function TodoItem({ todo, onPress, onToggle, onLongPress }: TodoItemProps) {
+export function TodoItem({ todo, onPress, onToggle, onLongPress, selectionMode, isSelected }: TodoItemProps) {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const themeColors = getThemeColors(theme);
 
@@ -39,7 +41,7 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress }: TodoItemProps
     });
   };
 
-  const priorityColor = getPriorityColor(todo.priority);
+  const priorityColor = getPriorityColor(todo.priority || 'medium');
 
   return (
     <TouchableOpacity
@@ -47,9 +49,17 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress }: TodoItemProps
       onLongPress={onLongPress}
       activeOpacity={0.7}
       delayLongPress={500}
+      style={isSelected && selectionMode ? { opacity: styles.card.opacity } : undefined}
     >
-      <Card style={styles.card}>
+      <Card style={[styles.card, isSelected && selectionMode && { backgroundColor: themeColors.primary + '15', borderColor: themeColors.text, borderWidth: spacing.xs }]}>
         <View style={styles.headerRow}>
+          {selectionMode && (
+            <View style={[styles.selectionCheckbox, { borderColor: themeColors.border }]}>
+              {isSelected && (
+                <Ionicons name="checkmark" size={18} color={themeColors.primary} />
+              )}
+            </View>
+          )}
           <View style={styles.leftHeader}>
             <TouchableOpacity
               style={[
@@ -80,7 +90,7 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress }: TodoItemProps
           <View style={styles.priorityContainer}>
             <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
             <Text style={[styles.priorityText, { color: themeColors.textSecondary }]}>
-              {todo.priority}
+              {(todo.priority || 'medium').charAt(0).toUpperCase() + (todo.priority || 'medium').slice(1)}
             </Text>
           </View>
         </View>
@@ -136,6 +146,7 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: spacing.sm,
     padding: spacing.md,
+    opacity: 0.7,
   },
   headerRow: {
     flexDirection: 'row',
@@ -211,5 +222,14 @@ const styles = StyleSheet.create({
   footerText: {
     ...typography.caption,
     fontSize: 12,
+  },
+  selectionCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginRight: spacing.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

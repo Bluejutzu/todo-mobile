@@ -150,7 +150,22 @@ export const storage = {
             if (!error && data) {
               console.log('✓ Loaded from cloud storage');
               this.notifyListeners('synced');
-              return data;
+              // Transform backend snake_case to camelCase and set defaults
+              const transformedData: Todo[] = data.map((item: any) => ({
+                id: item.id,
+                title: item.title,
+                description: item.description || undefined,
+                completed: item.completed || false,
+                priority: item.priority || 'medium', // Default to medium if null
+                category: item.category || undefined,
+                dueDate: item.due_date ? new Date(item.due_date) : undefined,
+                createdAt: item.created_at ? new Date(item.created_at) : new Date(),
+                updatedAt: item.updated_at || item.updatedAt ? new Date(item.updated_at || item.updatedAt) : new Date(),
+                color: item.color || undefined,
+                subtasks: item.subtasks || undefined,
+                tags: item.tags || undefined,
+              }));
+              return transformedData;
             }
           }
         } catch (cloudError) {
@@ -218,15 +233,21 @@ export const storage = {
               const payload = JSON.parse(atob(token.split('.')[1]));
               const userId = payload.sub;
 
-              // Save to cloud
+              // Save to cloud - map camelCase to snake_case
+              // Only save fields that exist in the database schema
               const { error } = await client.from('todos').upsert(
                 todos.map(t => ({
                   id: t.id,
                   title: t.title,
+                  description: t.description || null,
                   completed: t.completed,
+                  priority: t.priority || 'medium',
+                  category: t.category || null,
+                  due_date: t.dueDate ? (t.dueDate instanceof Date ? t.dueDate.toISOString() : t.dueDate) : null,
                   user_id: userId,
-                  created_at: t.createdAt || new Date().toISOString(),
-                  updated_at: t.updatedAt || new Date().toISOString(),
+                  created_at: t.createdAt ? (t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt) : new Date().toISOString(),
+                  updated_at: t.updatedAt ? (t.updatedAt instanceof Date ? t.updatedAt.toISOString() : t.updatedAt) : new Date().toISOString(),
+                  // Note: color, subtasks, and tags are stored locally only
                 }))
               );
 
