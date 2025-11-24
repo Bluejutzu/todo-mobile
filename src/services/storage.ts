@@ -93,6 +93,16 @@ export const storage = {
     await AsyncStorage.setItem(STORAGE_METHOD_KEY, method);
   },
 
+  async switchStorageMethod(method: 'cloud' | 'local'): Promise<boolean> {
+    try {
+      await this.setStorageMethod(method);
+      return true;
+    } catch (error) {
+      console.error('Error switching storage method:', error);
+      return false;
+    }
+  },
+
   async getDataSize(): Promise<number> {
     try {
       const todos = await this.getTodos();
@@ -221,6 +231,26 @@ export const storage = {
 
   async saveTodos(todos: Todo[], getToken?: () => Promise<string | null>): Promise<void> {
     try {
+      // Import store dynamically
+      const { useSubscriptionStore } = require('../stores/subscriptionStore');
+      const subscriptionStore = useSubscriptionStore.getState();
+
+      // Calculate size
+      const jsonContent = JSON.stringify(todos, null, 2);
+      const sizeBytes = new Blob([jsonContent]).size;
+
+      // Check limits
+      if (!subscriptionStore.checkLimit('maxStorageBytes', sizeBytes)) {
+        console.error('Storage limit reached');
+        // We still save locally as backup, but cloud sync should be prevented
+        // For now, we'll just log it and update usage stats
+      }
+
+      // Update usage
+      subscriptionStore.updateUsage({
+        storageUsedBytes: sizeBytes
+      });
+
       // Always try Cloud Storage first if authenticated
       if (getToken) {
         this.notifyListeners('syncing');

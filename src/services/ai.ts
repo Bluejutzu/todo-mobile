@@ -34,6 +34,20 @@ class AIService {
     ): Promise<AIResponse<T>> {
         const apiKey = this.getApiKey(config.userApiKey);
 
+        // Import store dynamically to avoid circular dependencies
+        const { useSubscriptionStore } = require('../stores/subscriptionStore');
+        const subscriptionStore = useSubscriptionStore.getState();
+
+        // Check limits
+        const { usage, checkLimit } = subscriptionStore;
+
+        if (!checkLimit('aiRequestsPerDay', usage.aiRequestsToday + 1)) {
+            return {
+                success: false,
+                error: 'Daily AI request limit reached. Upgrade to Premium for unlimited requests.',
+            };
+        }
+
         console.log('[AI Service] Making request with config:', {
             hasUserKey: !!config.userApiKey,
             hasAppKey: !!apiKey,
@@ -67,6 +81,11 @@ class AIService {
                     },
                 }
             );
+
+            // Update usage
+            subscriptionStore.updateUsage({
+                aiRequestsToday: usage.aiRequestsToday + 1
+            });
 
             console.log('[AI Service] Response received:', {
                 status: response.status,

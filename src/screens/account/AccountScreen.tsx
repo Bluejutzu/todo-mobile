@@ -13,6 +13,9 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { MediaType } from 'expo-image-picker';
 import { Platform, TouchableOpacity } from 'react-native';
+import { SubscriptionCard } from '../../components/subscription/SubscriptionCard';
+import { PaywallModal } from '../../components/subscription/PaywallModal';
+import { PremiumBadge } from '../../components/subscription/PremiumBadge';
 
 export function AccountScreen() {
   const { user } = useUser();
@@ -26,6 +29,7 @@ export function AccountScreen() {
   const [lastExportDate, setLastExportDate] = useState<Date | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [showPaywall, setShowPaywall] = useState(false);
 
   // Edit Profile State
   const [showEditProfileDialog, setShowEditProfileDialog] = useState(false);
@@ -218,12 +222,15 @@ export function AccountScreen() {
       <ScrollView style={styles.content}>
         <View style={styles.greetingSection}>
           <View style={styles.greetingTextContainer}>
-            <Text style={[styles.greetingText, { color: colors.text }]}>
-              Hey{' '}
-              <Text style={styles.greetingName}>
-                {user?.firstName || preferences?.name || 'there'}
+            <View style={styles.greetingHeader}>
+              <Text style={[styles.greetingText, { color: colors.text }]}>
+                Hey{' '}
+                <Text style={styles.greetingName}>
+                  {user?.firstName || preferences?.name || 'there'}
+                </Text>
               </Text>
-            </Text>
+              <PremiumBadge />
+            </View>
             <Text style={[styles.greetingPhrase, { color: colors.textSecondary }]}>
               {randomPhrase}
             </Text>
@@ -237,6 +244,8 @@ export function AccountScreen() {
             </View>
           </TouchableOpacity>
         </View>
+
+        <SubscriptionCard onUpgrade={() => setShowPaywall(true)} />
 
         <Card style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -364,6 +373,9 @@ export function AccountScreen() {
 
         <Card style={[styles.section, styles.dangerSection]}>
           <Text style={[styles.sectionTitle, { color: colors.error }]}>Danger Zone</Text>
+          <Text style={[styles.bodyText, styles.dangerText, { color: colors.textSecondary }]}>
+            If you need to redo the onboarding process or want to sign in with a new account then this is the place to go.
+          </Text>
           <Button
             title="Sign Out"
             onPress={handleSignOut}
@@ -480,6 +492,8 @@ export function AccountScreen() {
           </View>
         </View>
       )}
+
+      <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
     </SafeAreaView>
   );
 }
@@ -503,6 +517,12 @@ const styles = StyleSheet.create({
   greetingTextContainer: {
     flex: 1,
   },
+  greetingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   profileImage: {
     width: 50,
     height: 50,
@@ -511,7 +531,6 @@ const styles = StyleSheet.create({
   },
   greetingText: {
     fontSize: 28,
-    marginBottom: 4,
   },
   greetingName: {
     fontWeight: '700',
@@ -633,7 +652,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#000000', // Will be overridden by theme if needed
+    borderColor: '#000000',
   },
   sectionHeader: {
     flexDirection: 'row',
