@@ -50,7 +50,7 @@ export function SubscriptionCard({ onUpgrade }: SubscriptionCardProps) {
                         style={[styles.upgradeButton, { backgroundColor: themeColors.primary }]}
                         onPress={onUpgrade}
                     >
-                        <Text style={styles.upgradeText}>Upgrade</Text>
+                        <Text style={[styles.upgradeText, { color: themeColors.onPrimary }]}>Upgrade</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -136,7 +136,6 @@ const styles = StyleSheet.create({
     },
     upgradeText: {
         ...typography.bodySmall,
-        color: '#fff',
         fontWeight: '600',
     },
     divider: {

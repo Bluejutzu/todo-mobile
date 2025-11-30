@@ -36,25 +36,30 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.colorList}
       >
-        {PRESET_COLORS.map(color => (
-          <TouchableOpacity
-            key={color.value}
-            style={[
-              styles.colorOption,
-              { backgroundColor: color.value },
-              value === color.value && [
-                styles.selectedColorOption,
-                { borderColor: themeColors.text },
-              ],
-            ]}
-            onPress={() => onChange(color.value)}
-            activeOpacity={0.7}
-          >
-            {value === color.value && (
-              <Text style={[styles.checkmark, { color: themeColors.onPrimary }]}>✓</Text>
-            )}
-          </TouchableOpacity>
-        ))}
+        {PRESET_COLORS.map((color) => {
+          const colorValue = color.value;
+          const isSelected = value === colorValue;
+
+          return (
+            <TouchableOpacity
+              key={colorValue}
+              style={[
+                styles.colorOption,
+                { backgroundColor: colorValue },
+                isSelected && [
+                  styles.selectedColorOption,
+                  { borderColor: themeColors.text },
+                ],
+              ]}
+              onPress={() => onChange(colorValue)}
+              activeOpacity={0.7}
+            >
+              {isSelected && (
+                <Text style={[styles.checkmark, { color: themeColors.onPrimary }]}>✓</Text>
+              )}
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -70,7 +75,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   colorList: {
-    gap: spacing.sm,
     paddingVertical: spacing.xs,
   },
   colorOption: {
@@ -79,6 +83,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: spacing.sm,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,

@@ -1,3 +1,5 @@
+import { CustomerInfo } from 'react-native-purchases';
+
 export type SubscriptionTier = 'free' | 'premium';
 
 export interface SubscriptionLimits {
@@ -52,8 +54,6 @@ export const TIER_CONFIGS: Record<SubscriptionTier, { limits: SubscriptionLimits
         },
     },
 };
-
-import { CustomerInfo } from 'react-native-purchases';
 
 export interface SubscriptionState {
     isActive: boolean;

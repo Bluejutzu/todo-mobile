@@ -5,6 +5,7 @@ import { TabNavigator } from './TabNavigator';
 import { OnboardingNavigator } from '../screens/onboarding/OnboardingNavigator';
 import { useUserStore } from '../stores/userStore';
 import { useTodoStore } from '../stores/todoStore'; // Added import
+import { useSubscriptionStore } from '../stores/subscriptionStore'; // Added import
 import { useAuth } from '@clerk/clerk-expo'; // Added import
 import { storage } from '../services/storage';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
@@ -32,6 +33,8 @@ export function AppNavigator() {
   useEffect(() => {
     async function initialize() {
       await loadPreferences();
+      // Initialize subscription store
+      await useSubscriptionStore.getState().initialize();
       const completed = await storage.isOnboardingCompleted();
       // If not signed in, force onboarding/auth flow even if locally marked as completed
       setIsOnboarding(!completed || !isSignedIn);

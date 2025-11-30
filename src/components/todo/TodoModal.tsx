@@ -83,7 +83,6 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
       return;
     }
 
-    console.log('[TodoModal] Starting AI improvement...');
     setIsAIProcessing(true);
     setAiMessage('Improving todo with AI...');
 
@@ -102,7 +101,6 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
         });
 
         if (improvementResult.success && improvementResult.result) {
-          console.log('[TodoModal] Improvement result:', improvementResult.result);
           if (improvementResult.result.title) setTitle(improvementResult.result.title);
           if (improvementResult.result.description) setDescription(improvementResult.result.description);
           if (improvementResult.tokensUsed) totalTokens += improvementResult.tokensUsed;
@@ -121,7 +119,6 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
         });
 
         if (categoryResult.success && categoryResult.result) {
-          console.log('[TodoModal] Category suggestion:', categoryResult.result);
           setCategory(categoryResult.result.category);
           if (categoryResult.tokensUsed) totalTokens += categoryResult.tokensUsed;
           requestsMade++;
@@ -139,7 +136,6 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
         });
 
         if (priorityResult.success && priorityResult.result) {
-          console.log('[TodoModal] Priority suggestion:', priorityResult.result);
           setPriority(priorityResult.result.priority);
           if (priorityResult.tokensUsed) totalTokens += priorityResult.tokensUsed;
           requestsMade++;
@@ -195,7 +191,7 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="fullScreen"
+      presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
       <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>

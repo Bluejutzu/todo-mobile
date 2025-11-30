@@ -5,51 +5,63 @@ import { REVENUECAT_ENTITLEMENTS } from '../types/subscription';
 // Mock Mode Configuration
 const MOCK_MODE = true;
 
-// Mock Data
+// Mock State - tracks if user has purchased premium in mock mode
+let mockHasPremium = false;
+
+const MOCK_PACKAGES = [
+    {
+        identifier: '$rc_monthly',
+        packageType: 'MONTHLY',
+        product: {
+            identifier: 'premium_monthly',
+            description: 'Premium Monthly Subscription',
+            title: 'Premium Monthly',
+            price: 9.99,
+            priceString: '$9.99',
+            currencyCode: 'USD',
+            introPrice: null,
+            discounts: [],
+            productCategory: 'SUBSCRIPTION',
+            productType: 'AUTO_RENEWABLE_SUBSCRIPTION',
+            subscriptionPeriod: 'P1M',
+        },
+        offeringIdentifier: 'default',
+    },
+    {
+        identifier: '$rc_annual',
+        packageType: 'ANNUAL',
+        product: {
+            identifier: 'premium_yearly',
+            description: 'Premium Yearly Subscription',
+            title: 'Premium Yearly',
+            price: 99.99,
+            priceString: '$99.99',
+            currencyCode: 'USD',
+            introPrice: null,
+            discounts: [],
+            productCategory: 'SUBSCRIPTION',
+            productType: 'AUTO_RENEWABLE_SUBSCRIPTION',
+            subscriptionPeriod: 'P1Y',
+        },
+        offeringIdentifier: 'default',
+    },
+];
+
 const MOCK_OFFERING: PurchasesOffering = {
     identifier: 'default',
     serverDescription: 'Default Offering',
-    availablePackages: [
-        {
-            identifier: '$rc_monthly',
-            packageType: 'MONTHLY',
-            product: {
-                identifier: 'premium_monthly',
-                description: 'Premium Monthly Subscription',
-                title: 'Premium Monthly',
-                price: 9.99,
-                priceString: '$9.99',
-                currencyCode: 'USD',
-                introPrice: null,
-                discounts: [],
-                productCategory: 'SUBSCRIPTION',
-                productType: 'AUTO_RENEWABLE_SUBSCRIPTION',
-                subscriptionPeriod: 'P1M',
-            },
-            offeringIdentifier: 'default',
-        },
-        {
-            identifier: '$rc_annual',
-            packageType: 'ANNUAL',
-            product: {
-                identifier: 'premium_yearly',
-                description: 'Premium Yearly Subscription',
-                title: 'Premium Yearly',
-                price: 99.99,
-                priceString: '$99.99',
-                currencyCode: 'USD',
-                introPrice: null,
-                discounts: [],
-                productCategory: 'SUBSCRIPTION',
-                productType: 'AUTO_RENEWABLE_SUBSCRIPTION',
-                subscriptionPeriod: 'P1Y',
-            },
-            offeringIdentifier: 'default',
-        },
-    ] as any, // Type assertion for mock data
+    metadata: {},
+    availablePackages: MOCK_PACKAGES as any,
+    lifetime: null,
+    annual: MOCK_PACKAGES[1] as any,
+    sixMonth: null,
+    threeMonth: null,
+    twoMonth: null,
+    monthly: MOCK_PACKAGES[0] as any,
+    weekly: null,
 };
 
-const MOCK_CUSTOMER_INFO: CustomerInfo = {
+const MOCK_CUSTOMER_INFO_PREMIUM: CustomerInfo = {
     entitlements: {
         all: {
             [REVENUECAT_ENTITLEMENTS.PREMIUM]: {
@@ -96,6 +108,23 @@ const MOCK_CUSTOMER_INFO: CustomerInfo = {
     originalPurchaseDate: new Date().toISOString(),
 } as any;
 
+const MOCK_CUSTOMER_INFO_FREE: CustomerInfo = {
+    entitlements: {
+        all: {},
+        active: {},
+    },
+    activeSubscriptions: [],
+    allPurchasedProductIdentifiers: [],
+    nonSubscriptionTransactions: [],
+    latestExpirationDate: null,
+    firstSeen: new Date().toISOString(),
+    originalAppUserId: 'mock-user-id',
+    requestDate: new Date().toISOString(),
+    managementURL: null,
+    originalApplicationVersion: '1.0',
+    originalPurchaseDate: null,
+} as any;
+
 export const revenueCatService = {
     async initialize(userId?: string) {
         if (MOCK_MODE) {
@@ -136,9 +165,10 @@ export const revenueCatService = {
 
     async purchasePackage(pack: PurchasesPackage): Promise<{ customerInfo: CustomerInfo; productIdentifier: string }> {
         if (MOCK_MODE) {
+            mockHasPremium = true; // Set premium status
             return new Promise(resolve =>
                 setTimeout(() => resolve({
-                    customerInfo: MOCK_CUSTOMER_INFO,
+                    customerInfo: MOCK_CUSTOMER_INFO_PREMIUM,
                     productIdentifier: pack.product.identifier
                 }), 1000)
             );
@@ -157,7 +187,8 @@ export const revenueCatService = {
 
     async restorePurchases(): Promise<CustomerInfo> {
         if (MOCK_MODE) {
-            return new Promise(resolve => setTimeout(() => resolve(MOCK_CUSTOMER_INFO), 1000));
+            mockHasPremium = true; // Set premium status on restore
+            return new Promise(resolve => setTimeout(() => resolve(MOCK_CUSTOMER_INFO_PREMIUM), 1000));
         }
 
         try {
@@ -171,9 +202,8 @@ export const revenueCatService = {
 
     async getCustomerInfo(): Promise<CustomerInfo | null> {
         if (MOCK_MODE) {
-            // Return null initially to simulate free user, or MOCK_CUSTOMER_INFO for premium
-            // For testing flow, let's start as free user (null active entitlements)
-            return { ...MOCK_CUSTOMER_INFO, entitlements: { all: {}, active: {} } } as any;
+            // Return premium or free customer info based on mock state
+            return mockHasPremium ? MOCK_CUSTOMER_INFO_PREMIUM : MOCK_CUSTOMER_INFO_FREE;
         }
 
         try {
@@ -188,5 +218,13 @@ export const revenueCatService = {
     isPremium(customerInfo: CustomerInfo | null): boolean {
         if (!customerInfo) return false;
         return customerInfo.entitlements.active[REVENUECAT_ENTITLEMENTS.PREMIUM] !== undefined;
+    },
+
+    // Helper function to reset mock premium status (for testing)
+    resetMockPremium() {
+        if (MOCK_MODE) {
+            mockHasPremium = false;
+            console.log('Mock premium status reset to free');
+        }
     }
 };

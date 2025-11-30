@@ -22,7 +22,7 @@ export function AISettingsModal({ visible, onClose }: AISettingsModalProps) {
         <Modal
             visible={visible}
             animationType="slide"
-            presentationStyle="fullScreen"
+            presentationStyle="pageSheet"
             onRequestClose={onClose}
         >
             <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>

@@ -8,7 +8,6 @@ import {
     ActivityIndicator,
     Alert,
     ScrollView,
-    SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PurchasesPackage } from 'react-native-purchases';
@@ -18,6 +17,7 @@ import { getThemeColors } from '../../theme/colors';
 import { useUserStore } from '../../stores/userStore';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface PaywallModalProps {
     visible: boolean;
@@ -81,6 +81,7 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
             Alert.alert('Success', 'Purchases restored successfully.');
             onClose();
         } catch (error) {
+            console.error('Failed to restore purchases:', error);
             Alert.alert('Error', 'Failed to restore purchases.');
         } finally {
             setLoading(false);
@@ -177,7 +178,7 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
                         {purchasing ? (
                             <ActivityIndicator color="#fff" />
                         ) : (
-                            <Text style={styles.purchaseButtonText}>
+                            <Text style={[styles.purchaseButtonText, { color: themeColors.onPrimary }]}>
                                 Subscribe Now
                             </Text>
                         )}
@@ -294,7 +295,6 @@ const styles = StyleSheet.create({
     },
     purchaseButtonText: {
         ...typography.body,
-        color: '#fff',
         fontWeight: 'bold',
     },
     restoreButton: {

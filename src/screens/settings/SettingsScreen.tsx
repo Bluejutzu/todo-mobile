@@ -178,7 +178,7 @@ export function SettingsScreen() {
                 style={[styles.upgradeButton, { backgroundColor: themeColors.primary }]}
                 onPress={() => setShowPaywall(true)}
               >
-                <Text style={styles.upgradeText}>Upgrade</Text>
+                <Text style={[styles.upgradeText, { color: themeColors.onPrimary }]}>Upgrade</Text>
               </TouchableOpacity>
             )}
 
@@ -371,7 +371,7 @@ export function SettingsScreen() {
 
           <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
 
-          <Text style={[styles.label, { color: themeColors.text, marginBottom: spacing.sm }]}>
+          <Text style={[styles.label, { color: themeColors.On, marginBottom: spacing.sm }]}>
             Delete Behavior
           </Text>
           <View style={styles.row}>
@@ -387,8 +387,8 @@ export function SettingsScreen() {
                   storage: { ...preferences?.storage, deleteMode: value ? 'soft' : 'hard' }
                 })
               }
-              trackColor={{ false: themeColors.border, true: themeColors.primary }}
-              thumbColor="#ffffff"
+              trackColor={{ false: themeColors.border, true: themeColors.textSecondary }}
+              thumbColor={themeColors.primary}
             />
           </View>
         </Card>
@@ -495,7 +495,6 @@ const styles = StyleSheet.create({
   },
   upgradeText: {
     ...typography.bodySmall,
-    color: '#fff',
     fontWeight: '600',
   },
   manageText: {
@@ -545,6 +544,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginTop: spacing.md,
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,

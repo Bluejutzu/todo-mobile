@@ -2,14 +2,11 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-    SubscriptionTier,
     SubscriptionUsage,
     TIER_CONFIGS,
     SubscriptionState,
-    REVENUECAT_ENTITLEMENTS
 } from '../types/subscription';
 import { revenueCatService } from '../services/revenuecat';
-import { CustomerInfo } from 'react-native-purchases';
 
 interface SubscriptionStore extends SubscriptionState {
     usage: SubscriptionUsage;
