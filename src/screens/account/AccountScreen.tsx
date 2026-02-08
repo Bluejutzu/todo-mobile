@@ -359,7 +359,10 @@ export function AccountScreen() {
                 Last export: {lastExportDate.toLocaleDateString()}
               </Text>
               <Text style={[styles.bodyText, { color: colors.text }]}>
-                Next possible export: {new Date(lastExportDate.setDate(lastExportDate.getDate() + 30)).toLocaleDateString()}
+                Next possible export:{' '}
+                {new Date(
+                  lastExportDate.setDate(lastExportDate.getDate() + 30)
+                ).toLocaleDateString()}
               </Text>
             </>
           )}
@@ -374,7 +377,8 @@ export function AccountScreen() {
         <Card style={[styles.section, styles.dangerSection]}>
           <Text style={[styles.sectionTitle, { color: colors.error }]}>Danger Zone</Text>
           <Text style={[styles.bodyText, styles.dangerText, { color: colors.textSecondary }]}>
-            If you need to redo the onboarding process or want to sign in with a new account then this is the place to go.
+            If you need to redo the onboarding process or want to sign in with a new account then
+            this is the place to go.
           </Text>
           <Button
             title="Sign Out"
@@ -384,16 +388,14 @@ export function AccountScreen() {
           />
           <Text style={[styles.bodyText, styles.dangerText, { color: colors.textSecondary }]}>
             Deleting your account will permanently remove all your data including todos,
-            preferences, and account information from our cloud storage and account provider (Clerk). This action cannot be
-            undone.
-
+            preferences, and account information from our cloud storage and account provider
+            (Clerk). This action cannot be undone.
             {!showExportReminder && (
               <Text style={[styles.bodyText, { color: colors.text }]}>
-                {"\n\n"}
+                {'\n\n'}
                 If you need to create a new backup, but are unable to, contact support.
               </Text>
             )}
-
           </Text>
           <Button
             title="Delete Account"

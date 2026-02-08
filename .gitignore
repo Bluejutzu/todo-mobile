@@ -4,6 +4,8 @@
 node_modules/
 
 # Expo
+eas-hooks/
+ios-widget-files
 .expo/
 dist/
 web-build/

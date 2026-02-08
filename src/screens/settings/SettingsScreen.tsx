@@ -123,27 +123,23 @@ export function SettingsScreen() {
     }
 
     const methodName = newMethod === 'cloud' ? 'Cloud Storage' : 'Local Storage';
-    Alert.alert(
-      'Switch Storage',
-      `Switch to ${methodName}? Your data will be migrated.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Switch',
-          onPress: async () => {
-            setSwitching(true);
-            const success = await storage.switchStorageMethod(newMethod);
-            setSwitching(false);
-            if (success) {
-              setStorageMethodState(newMethod);
-              Alert.alert('Success', `Switched to ${methodName}`);
-            } else {
-              Alert.alert('Error', 'Failed to switch storage method');
-            }
-          },
+    Alert.alert('Switch Storage', `Switch to ${methodName}? Your data will be migrated.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Switch',
+        onPress: async () => {
+          setSwitching(true);
+          const success = await storage.switchStorageMethod(newMethod);
+          setSwitching(false);
+          if (success) {
+            setStorageMethodState(newMethod);
+            Alert.alert('Success', `Switched to ${methodName}`);
+          } else {
+            Alert.alert('Error', 'Failed to switch storage method');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
@@ -183,9 +179,7 @@ export function SettingsScreen() {
             )}
 
             {isPremium && (
-              <TouchableOpacity
-                onPress={() => setShowPaywall(true)}
-              >
+              <TouchableOpacity onPress={() => setShowPaywall(true)}>
                 <Text style={[styles.manageText, { color: themeColors.primary }]}>Manage</Text>
               </TouchableOpacity>
             )}
@@ -194,12 +188,14 @@ export function SettingsScreen() {
 
         {/* Appearance & Themes Section */}
         <Card style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Appearance & Themes</Text>
+          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>
+            Appearance & Themes
+          </Text>
 
           {/* Theme Grid */}
           <View style={styles.themeGrid}>
             {/* Light and Dark themes first */}
-            {(['light', 'dark'] as const).map((themeName) => {
+            {(['light', 'dark'] as const).map(themeName => {
               const themePreview = themes[themeName];
               const isSelected = theme === themeName;
               return (
@@ -216,9 +212,15 @@ export function SettingsScreen() {
                   onPress={() => setTheme(themeName)}
                 >
                   <View style={styles.themePreview}>
-                    <View style={[styles.themeColorDot, { backgroundColor: themePreview.primary }]} />
-                    <View style={[styles.themeColorDot, { backgroundColor: themePreview.secondary }]} />
-                    <View style={[styles.themeColorDot, { backgroundColor: themePreview.secondary }]} />
+                    <View
+                      style={[styles.themeColorDot, { backgroundColor: themePreview.primary }]}
+                    />
+                    <View
+                      style={[styles.themeColorDot, { backgroundColor: themePreview.secondary }]}
+                    />
+                    <View
+                      style={[styles.themeColorDot, { backgroundColor: themePreview.secondary }]}
+                    />
                   </View>
                   <Text style={[styles.themeName, { color: themePreview.text }]}>
                     {getThemeDisplayName(themeName)}
@@ -239,38 +241,48 @@ export function SettingsScreen() {
           {/* Other Color Themes */}
           <Text style={[styles.subsectionTitle, { color: themeColors.text }]}>Color Themes</Text>
           <View style={styles.themeGrid}>
-            {getAvailableThemes().filter(t => t !== 'light' && t !== 'dark').map(themeName => {
-              const themePreview = themes[themeName];
-              const isSelected = theme === themeName;
-              return (
-                <TouchableOpacity
-                  key={themeName}
-                  style={[
-                    styles.themeCard,
-                    {
-                      backgroundColor: themePreview.surface,
-                      borderColor: isSelected ? themePreview.primary : themePreview.border,
-                    },
-                    isSelected && styles.themeCardSelected,
-                  ]}
-                  onPress={() => setTheme(themeName)}
-                >
-                  <View style={styles.themePreview}>
-                    <View style={[styles.themeColorDot, { backgroundColor: themePreview.primary }]} />
-                    <View style={[styles.themeColorDot, { backgroundColor: themePreview.secondary }]} />
-                    <View style={[styles.themeColorDot, { backgroundColor: themePreview.secondary }]} />
-                  </View>
-                  <Text style={[styles.themeName, { color: themePreview.text }]}>
-                    {getThemeDisplayName(themeName)}
-                  </Text>
-                  {isSelected && (
-                    <View style={[styles.selectedBadge, { backgroundColor: themePreview.primary }]}>
-                      <Ionicons name="checkmark" size={16} color={themePreview.onPrimary} />
+            {getAvailableThemes()
+              .filter(t => t !== 'light' && t !== 'dark')
+              .map(themeName => {
+                const themePreview = themes[themeName];
+                const isSelected = theme === themeName;
+                return (
+                  <TouchableOpacity
+                    key={themeName}
+                    style={[
+                      styles.themeCard,
+                      {
+                        backgroundColor: themePreview.surface,
+                        borderColor: isSelected ? themePreview.primary : themePreview.border,
+                      },
+                      isSelected && styles.themeCardSelected,
+                    ]}
+                    onPress={() => setTheme(themeName)}
+                  >
+                    <View style={styles.themePreview}>
+                      <View
+                        style={[styles.themeColorDot, { backgroundColor: themePreview.primary }]}
+                      />
+                      <View
+                        style={[styles.themeColorDot, { backgroundColor: themePreview.secondary }]}
+                      />
+                      <View
+                        style={[styles.themeColorDot, { backgroundColor: themePreview.secondary }]}
+                      />
                     </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+                    <Text style={[styles.themeName, { color: themePreview.text }]}>
+                      {getThemeDisplayName(themeName)}
+                    </Text>
+                    {isSelected && (
+                      <View
+                        style={[styles.selectedBadge, { backgroundColor: themePreview.primary }]}
+                      >
+                        <Ionicons name="checkmark" size={16} color={themePreview.onPrimary} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
           </View>
           <View
             style={[
@@ -292,20 +304,26 @@ export function SettingsScreen() {
           {/* Usage Statistics */}
           <View style={styles.statsContainer}>
             <View style={styles.statRow}>
-              <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Total Requests:</Text>
+              <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>
+                Total Requests:
+              </Text>
               <Text style={[styles.statValue, { color: themeColors.text }]}>
                 {preferences?.ai?.requestCount || 0}
               </Text>
             </View>
             <View style={styles.statRow}>
-              <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Tokens Used:</Text>
+              <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>
+                Tokens Used:
+              </Text>
               <Text style={[styles.statValue, { color: themeColors.text }]}>
                 {preferences?.ai?.totalTokensUsed?.toLocaleString() || 0}
               </Text>
             </View>
             {preferences?.ai?.lastUsed && (
               <View style={styles.statRow}>
-                <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Last Used:</Text>
+                <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>
+                  Last Used:
+                </Text>
                 <Text style={[styles.statValue, { color: themeColors.text }]}>
                   {new Date(preferences.ai.lastUsed).toLocaleDateString()}
                 </Text>
@@ -320,15 +338,23 @@ export function SettingsScreen() {
               onPress={() => setShowAISettings(true)}
             >
               <Ionicons name="settings" size={18} color={themeColors.onPrimary} />
-              <Text style={[styles.aiButtonText, { color: themeColors.onPrimary }]}>AI Settings</Text>
+              <Text style={[styles.aiButtonText, { color: themeColors.onPrimary }]}>
+                AI Settings
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.aiButton, styles.aiButtonSecondary, { borderColor: themeColors.border }]}
+              style={[
+                styles.aiButton,
+                styles.aiButtonSecondary,
+                { borderColor: themeColors.border },
+              ]}
               onPress={() => setShowUsageModal(true)}
             >
               <Ionicons name="stats-chart" size={18} color={themeColors.text} />
-              <Text style={[styles.aiButtonText, { color: themeColors.text }]}>View Statistics</Text>
+              <Text style={[styles.aiButtonText, { color: themeColors.text }]}>
+                View Statistics
+              </Text>
             </TouchableOpacity>
           </View>
         </Card>
@@ -382,9 +408,9 @@ export function SettingsScreen() {
             </Text>
             <Switch
               value={preferences?.storage?.deleteMode !== 'hard'}
-              onValueChange={(value) =>
+              onValueChange={value =>
                 useUserStore.getState().updatePreferences({
-                  storage: { ...preferences?.storage, deleteMode: value ? 'soft' : 'hard' }
+                  storage: { ...preferences?.storage, deleteMode: value ? 'soft' : 'hard' },
                 })
               }
               trackColor={{ false: themeColors.border, true: themeColors.textSecondary }}
@@ -425,10 +451,10 @@ export function SettingsScreen() {
         {/* About Section */}
         <Card style={styles.section}>
           <Text style={[styles.sectionTitle, { color: themeColors.text }]}>About</Text>
-          <Text style={[styles.bodyText, { color: themeColors.textSecondary }]}>
-            Version 1.0.0
-          </Text>
-          <Text style={[styles.bodyText, { color: themeColors.textSecondary, marginTop: spacing.xs }]}>
+          <Text style={[styles.bodyText, { color: themeColors.textSecondary }]}>Version 1.0.0</Text>
+          <Text
+            style={[styles.bodyText, { color: themeColors.textSecondary, marginTop: spacing.xs }]}
+          >
             Made with ❤️ by Bluejutzu
           </Text>
         </Card>

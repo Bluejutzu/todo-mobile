@@ -28,8 +28,18 @@ export function TodoListScreen() {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const themeColors = getThemeColors(theme);
 
-  const { todos, loadTodos, addTodo, updateTodo, deleteTodo, duplicateTodo, toggleComplete, bulkComplete, bulkDelete, bulkUpdatePriority } =
-    useTodoStore();
+  const {
+    todos,
+    loadTodos,
+    addTodo,
+    updateTodo,
+    deleteTodo,
+    duplicateTodo,
+    toggleComplete,
+    bulkComplete,
+    bulkDelete,
+    bulkUpdatePriority,
+  } = useTodoStore();
 
   useEffect(() => {
     loadTodos();
@@ -137,22 +147,18 @@ export function TodoListScreen() {
   };
 
   const handleBulkDelete = () => {
-    Alert.alert(
-      'Delete Todos',
-      `Are you sure you want to delete ${selectedTodos.size} todo(s)?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await bulkDelete(Array.from(selectedTodos));
-            setSelectionMode(false);
-            setSelectedTodos(new Set());
-          },
+    Alert.alert('Delete Todos', `Are you sure you want to delete ${selectedTodos.size} todo(s)?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await bulkDelete(Array.from(selectedTodos));
+          setSelectionMode(false);
+          setSelectedTodos(new Set());
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleBulkPriority = (priority: string) => {
@@ -310,12 +316,9 @@ export function TodoListScreen() {
         <View style={styles.headerTop}>
           <Text style={[styles.title, { color: themeColors.text }]}>My Todos</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity
-              onPress={toggleSelectionMode}
-              style={styles.iconButton}
-            >
+            <TouchableOpacity onPress={toggleSelectionMode} style={styles.iconButton}>
               <Ionicons
-                name={selectionMode ? "checkmark-done" : "checkbox-outline"}
+                name={selectionMode ? 'checkmark-done' : 'checkbox-outline'}
                 size={24}
                 color={themeColors.text}
               />
@@ -325,7 +328,7 @@ export function TodoListScreen() {
               style={styles.iconButton}
             >
               <Ionicons
-                name={groupByCategory ? "layers" : "list"}
+                name={groupByCategory ? 'layers' : 'list'}
                 size={24}
                 color={themeColors.primary}
               />
@@ -357,7 +360,9 @@ export function TodoListScreen() {
             return (
               <TodoItem
                 todo={item}
-                onPress={() => selectionMode ? toggleTodoSelection(item.id) : handleTodoPress(item.id)}
+                onPress={() =>
+                  selectionMode ? toggleTodoSelection(item.id) : handleTodoPress(item.id)
+                }
                 onToggle={() => toggleComplete(item.id)}
                 onLongPress={selectionMode ? undefined : () => handleLongPress(item)}
                 selectionMode={selectionMode}
@@ -374,7 +379,7 @@ export function TodoListScreen() {
               >
                 <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{title}</Text>
                 <Ionicons
-                  name={collapsedCategories[title] ? "chevron-forward" : "chevron-down"}
+                  name={collapsedCategories[title] ? 'chevron-forward' : 'chevron-down'}
                   size={20}
                   color={themeColors.textSecondary}
                 />
@@ -389,7 +394,12 @@ export function TodoListScreen() {
 
       {/* Bulk Action Bar */}
       {selectionMode && selectedTodos.size > 0 && (
-        <View style={[styles.bulkActionBar, { backgroundColor: themeColors.surface, borderTopColor: themeColors.border }]}>
+        <View
+          style={[
+            styles.bulkActionBar,
+            { backgroundColor: themeColors.surface, borderTopColor: themeColors.border },
+          ]}
+        >
           <TouchableOpacity style={styles.bulkAction} onPress={handleBulkComplete}>
             <Ionicons name="checkmark-circle-outline" size={24} color={themeColors.success} />
             <Text style={[styles.bulkActionText, { color: themeColors.text }]}>Complete</Text>
@@ -409,19 +419,17 @@ export function TodoListScreen() {
         </View>
       )}
 
-      {
-        !selectionMode && (
-          <View style={styles.fab}>
-            <TouchableOpacity
-              style={[styles.fabButton, { backgroundColor: themeColors.primary }]}
-              onPress={handleAddTodo}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.fabIcon, { color: themeColors.onPrimary }]}>+</Text>
-            </TouchableOpacity>
-          </View>
-        )
-      }
+      {!selectionMode && (
+        <View style={styles.fab}>
+          <TouchableOpacity
+            style={[styles.fabButton, { backgroundColor: themeColors.primary }]}
+            onPress={handleAddTodo}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.fabIcon, { color: themeColors.onPrimary }]}>+</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <TodoModal
         visible={showAddModal}

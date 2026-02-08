@@ -98,11 +98,11 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
     const todos = get().todos.map(todo =>
       todo.id === id
         ? {
-          ...todo,
-          completed: !todo.completed,
-          completedAt: !todo.completed ? new Date() : undefined,
-          updatedAt: new Date(),
-        }
+            ...todo,
+            completed: !todo.completed,
+            completedAt: !todo.completed ? new Date() : undefined,
+            updatedAt: new Date(),
+          }
         : todo
     );
     set({ todos });
@@ -129,9 +129,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
 
   bulkComplete: async (ids: string[], completed: boolean) => {
     const updatedTodos = get().todos.map(todo =>
-      ids.includes(todo.id)
-        ? { ...todo, completed, updatedAt: new Date() }
-        : todo
+      ids.includes(todo.id) ? { ...todo, completed, updatedAt: new Date() } : todo
     );
     set({ todos: updatedTodos });
     await storage.saveTodos(updatedTodos, get().getToken);

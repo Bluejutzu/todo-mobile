@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "android",
-    "slug": "android",
+    "name": "todo-mobile",
+    "slug": "todo-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,11 @@
     },
     "scheme": "todo-mobile",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.todo-mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -29,8 +33,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": "spatium-todo"
+        "projectId": "aad6e2bc-1c46-44a6-971f-1c9f8d82f35e"
       }
-    }
+    },
+    "owner": "bluejutzus-organization",
+    "plugins": []
   }
 }

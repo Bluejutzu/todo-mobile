@@ -76,7 +76,6 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
     setAiMessage('');
   }, [todo, visible]);
 
-
   const handleImproveWithAI = async () => {
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a title first');
@@ -95,6 +94,7 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
       // Improve todo
       if (preferences?.ai?.todoImprovement) {
         setAiMessage('Enhancing title and description...');
+
         const improvementResult = await aiService.improveTodo(currentTodo, todos, {
           userApiKey: preferences?.ai?.openRouterKey,
           model: preferences?.ai?.model,
@@ -102,7 +102,8 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
 
         if (improvementResult.success && improvementResult.result) {
           if (improvementResult.result.title) setTitle(improvementResult.result.title);
-          if (improvementResult.result.description) setDescription(improvementResult.result.description);
+          if (improvementResult.result.description)
+            setDescription(improvementResult.result.description);
           if (improvementResult.tokensUsed) totalTokens += improvementResult.tokensUsed;
           requestsMade++;
         } else {
@@ -113,6 +114,7 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
       // Suggest category
       if (preferences?.ai?.autoCategory && !category) {
         setAiMessage('Suggesting category...');
+
         const categoryResult = await aiService.suggestCategory(currentTodo, todos, {
           userApiKey: preferences?.ai?.openRouterKey,
           model: preferences?.ai?.model,
@@ -130,6 +132,7 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
       // Suggest priority
       if (preferences?.ai?.prioritySuggestion) {
         setAiMessage('Analyzing priority...');
+
         const priorityResult = await aiService.suggestPriority(currentTodo, todos, {
           userApiKey: preferences?.ai?.openRouterKey,
           model: preferences?.ai?.model,
@@ -155,10 +158,11 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
             lastUsed: new Date(),
           } as AIConfig,
         });
-        console.log(`[TodoModal] Updated usage: +${ requestsMade } requests, +${ totalTokens } tokens`);
+        console.log(`[TodoModal] Updated usage: +${requestsMade} requests, +${totalTokens} tokens`);
       }
 
       setAiMessage('AI improvements applied!');
+
       setTimeout(() => {
         setIsAIProcessing(false);
         setAiMessage('');
@@ -166,6 +170,7 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
     } catch (error) {
       console.error('[TodoModal] AI improvement error:', error);
       Alert.alert('Error', 'Failed to improve todo with AI');
+
       setIsAIProcessing(false);
       setAiMessage('');
     }
@@ -194,7 +199,10 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <SafeAreaView style={[styles.container, { backgroundColor: themeColors.background }]} edges={['top']}>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: themeColors.background }]}
+        edges={['top']}
+      >
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.headerButton}>
@@ -244,7 +252,9 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
               activeOpacity={0.7}
             >
               <Ionicons name="sparkles" size={18} color={themeColors.onPrimary} />
-              <Text style={[styles.aiButtonText, { color: themeColors.onPrimary }]}>Improve with AI</Text>
+              <Text style={[styles.aiButtonText, { color: themeColors.onPrimary }]}>
+                Improve with AI
+              </Text>
             </TouchableOpacity>
           )}
 

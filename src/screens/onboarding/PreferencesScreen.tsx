@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   },
   otherThemes: {
     flexDirection: 'row',
-    marginHorizontal: -4
+    marginHorizontal: -4,
   },
   themeOption: {
     flex: 1,

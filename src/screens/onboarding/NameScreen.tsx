@@ -134,6 +134,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   buttonTextInactive: {
-    color: '#666666', 
+    color: '#666666',
   },
 });

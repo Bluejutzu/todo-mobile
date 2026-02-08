@@ -36,7 +36,7 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.colorList}
       >
-        {PRESET_COLORS.map((color) => {
+        {PRESET_COLORS.map(color => {
           const colorValue = color.value;
           const isSelected = value === colorValue;
 
@@ -46,10 +46,7 @@ export function ColorPicker({ value, onChange, label }: ColorPickerProps) {
               style={[
                 styles.colorOption,
                 { backgroundColor: colorValue },
-                isSelected && [
-                  styles.selectedColorOption,
-                  { borderColor: themeColors.text },
-                ],
+                isSelected && [styles.selectedColorOption, { borderColor: themeColors.text }],
               ]}
               onPress={() => onChange(colorValue)}
               activeOpacity={0.7}

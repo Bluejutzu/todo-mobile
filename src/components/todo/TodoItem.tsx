@@ -17,7 +17,14 @@ interface TodoItemProps {
   isSelected?: boolean;
 }
 
-export function TodoItem({ todo, onPress, onToggle, onLongPress, selectionMode, isSelected }: TodoItemProps) {
+export function TodoItem({
+  todo,
+  onPress,
+  onToggle,
+  onLongPress,
+  selectionMode,
+  isSelected,
+}: TodoItemProps) {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const themeColors = getThemeColors(theme);
 
@@ -51,13 +58,21 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress, selectionMode, 
       delayLongPress={500}
       style={isSelected && selectionMode ? { opacity: styles.card.opacity } : undefined}
     >
-      <Card style={[styles.card, isSelected && selectionMode && { backgroundColor: themeColors.primary + '15', borderColor: themeColors.text, borderWidth: spacing.xs }]}>
+      <Card
+        style={[
+          styles.card,
+          isSelected &&
+            selectionMode && {
+              backgroundColor: themeColors.primary + '15',
+              borderColor: themeColors.text,
+              borderWidth: spacing.xs,
+            },
+        ]}
+      >
         <View style={styles.headerRow}>
           {selectionMode && (
             <View style={[styles.selectionCheckbox, { borderColor: themeColors.border }]}>
-              {isSelected && (
-                <Ionicons name="checkmark" size={18} color={themeColors.primary} />
-              )}
+              {isSelected && <Ionicons name="checkmark" size={18} color={themeColors.primary} />}
             </View>
           )}
           <View style={styles.leftHeader}>
@@ -70,9 +85,7 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress, selectionMode, 
               onPress={onToggle}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              {todo.completed && (
-                <Ionicons name="checkmark" size={14} color="#fff" />
-              )}
+              {todo.completed && <Ionicons name="checkmark" size={14} color="#fff" />}
             </TouchableOpacity>
 
             <Text
@@ -90,7 +103,8 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress, selectionMode, 
           <View style={styles.priorityContainer}>
             <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
             <Text style={[styles.priorityText, { color: themeColors.textSecondary }]}>
-              {(todo.priority || 'medium').charAt(0).toUpperCase() + (todo.priority || 'medium').slice(1)}
+              {(todo.priority || 'medium').charAt(0).toUpperCase() +
+                (todo.priority || 'medium').slice(1)}
             </Text>
           </View>
         </View>
@@ -120,7 +134,9 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress, selectionMode, 
             )}
             {todo.category && (
               <View style={styles.footerItem}>
-                {todo.dueDate && <Text style={[styles.footerText, { color: themeColors.textSecondary }]}> • </Text>}
+                {todo.dueDate && (
+                  <Text style={[styles.footerText, { color: themeColors.textSecondary }]}> • </Text>
+                )}
                 <Ionicons name="pricetag-outline" size={12} color={themeColors.textSecondary} />
                 <Text style={[styles.footerText, { color: themeColors.textSecondary }]}>
                   {todo.category}
@@ -132,7 +148,12 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress, selectionMode, 
           {/* Keep tags/subtasks as chips if needed, or just hide them for now based on "instead of everything being in chips" */}
           {/* I'll keep subtasks as a small indicator if present */}
           {todo.subtasks && todo.subtasks.length > 0 && (
-            <Text style={[styles.footerText, { color: themeColors.textSecondary, marginLeft: spacing.sm }]}>
+            <Text
+              style={[
+                styles.footerText,
+                { color: themeColors.textSecondary, marginLeft: spacing.sm },
+              ]}
+            >
               {todo.subtasks.filter(t => t.completed).length}/{todo.subtasks.length} subtasks
             </Text>
           )}

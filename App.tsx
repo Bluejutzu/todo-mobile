@@ -16,16 +16,22 @@ if (!publishableKey) {
   )
 }
 
+function AppContent() {
+  return (
+    <GestureHandlerRootView style={styles.container}>
+      <SafeAreaProvider>
+        <AppNavigator />
+        <StatusBar style="light" />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
+
 export default function App() {
   return (
     <ClerkProvider tokenCache={tokenCache} publishableKey={publishableKey}>
       <ClerkLoaded>
-        <GestureHandlerRootView style={styles.container}>
-          <SafeAreaProvider>
-            <AppNavigator />
-            <StatusBar style="light" />
-          </SafeAreaProvider>
-        </GestureHandlerRootView>
+        <AppContent />
       </ClerkLoaded>
     </ClerkProvider>
   );

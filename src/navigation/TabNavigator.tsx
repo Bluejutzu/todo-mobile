@@ -65,13 +65,17 @@ export function TabNavigator() {
         component={AccountScreen}
         options={{
           tabBarLabel: 'Account',
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size }) =>
             user ? (
-              <Image source={{ uri: user.imageUrl }} style={styles.icon} height={size} width={size} />
+              <Image
+                source={{ uri: user.imageUrl }}
+                style={styles.icon}
+                height={size}
+                width={size}
+              />
             ) : (
               <Ionicons name="person-circle" size={size} color={color} />
-            )
-          ),
+            ),
           headerShown: false,
         }}
       />

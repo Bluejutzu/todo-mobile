@@ -35,7 +35,13 @@ export interface AIModel {
   contextWindow: number;
 }
 
-export type AIFeatureType = 'auto-category' | 'improve' | 'priority' | 'due-date' | 'subtasks' | 'tags';
+export type AIFeatureType =
+  | 'auto-category'
+  | 'improve'
+  | 'priority'
+  | 'due-date'
+  | 'subtasks'
+  | 'tags';
 
 export interface AIFeature {
   id: AIFeatureType;
@@ -72,4 +78,3 @@ export interface DueDateSuggestion {
   dueDate: Date;
   reason: string;
 }
-

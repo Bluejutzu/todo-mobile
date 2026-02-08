@@ -170,7 +170,10 @@ export const storage = {
                 category: item.category || undefined,
                 dueDate: item.due_date ? new Date(item.due_date) : undefined,
                 createdAt: item.created_at ? new Date(item.created_at) : new Date(),
-                updatedAt: item.updated_at || item.updatedAt ? new Date(item.updated_at || item.updatedAt) : new Date(),
+                updatedAt:
+                  item.updated_at || item.updatedAt
+                    ? new Date(item.updated_at || item.updatedAt)
+                    : new Date(),
                 color: item.color || undefined,
                 subtasks: item.subtasks || undefined,
                 tags: item.tags || undefined,
@@ -248,7 +251,7 @@ export const storage = {
 
       // Update usage
       subscriptionStore.updateUsage({
-        storageUsedBytes: sizeBytes
+        storageUsedBytes: sizeBytes,
       });
 
       // Always try Cloud Storage first if authenticated
@@ -273,10 +276,22 @@ export const storage = {
                   completed: t.completed,
                   priority: t.priority || 'medium',
                   category: t.category || null,
-                  due_date: t.dueDate ? (t.dueDate instanceof Date ? t.dueDate.toISOString() : t.dueDate) : null,
+                  due_date: t.dueDate
+                    ? t.dueDate instanceof Date
+                      ? t.dueDate.toISOString()
+                      : t.dueDate
+                    : null,
                   user_id: userId,
-                  created_at: t.createdAt ? (t.createdAt instanceof Date ? t.createdAt.toISOString() : t.createdAt) : new Date().toISOString(),
-                  updated_at: t.updatedAt ? (t.updatedAt instanceof Date ? t.updatedAt.toISOString() : t.updatedAt) : new Date().toISOString(),
+                  created_at: t.createdAt
+                    ? t.createdAt instanceof Date
+                      ? t.createdAt.toISOString()
+                      : t.createdAt
+                    : new Date().toISOString(),
+                  updated_at: t.updatedAt
+                    ? t.updatedAt instanceof Date
+                      ? t.updatedAt.toISOString()
+                      : t.updatedAt
+                    : new Date().toISOString(),
                   // Note: color, subtasks, and tags are stored locally only
                 }))
               );
