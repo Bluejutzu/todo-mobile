@@ -75,9 +75,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   colorOption: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.sm,
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     color: '#ffffff',
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },

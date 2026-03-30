@@ -51,7 +51,7 @@ export function DatePicker({
           style={[
             styles.input,
             {
-              backgroundColor: themeColors.surface,
+              backgroundColor: themeColors.input,
               borderColor: themeColors.border,
             },
           ]}
@@ -115,7 +115,7 @@ export function DatePicker({
         style={[
           styles.input,
           {
-            backgroundColor: themeColors.surface,
+            backgroundColor: themeColors.input,
             borderColor: themeColors.border,
           },
         ]}

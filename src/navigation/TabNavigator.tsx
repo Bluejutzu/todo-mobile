@@ -6,16 +6,17 @@ import { CalendarScreen } from '../screens/calendar/CalendarScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { AccountScreen } from '../screens/account/AccountScreen';
 import { useUserStore } from '../stores/userStore';
-import { getThemeColors } from '../theme/colors';
+import { getThemeColors, isDarkTheme } from '../theme/colors';
 import type { MainTabParamList } from '../types/navigation';
 import { useUser } from '@clerk/clerk-expo';
-import { Image, StyleSheet } from 'react-native';
+import { Image, StyleSheet, Platform } from 'react-native';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export function TabNavigator() {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
-  const themeColors = getThemeColors(theme);
+  const colors = getThemeColors(theme);
+  const dark = isDarkTheme(theme);
   const { user } = useUser();
 
   return (
@@ -23,60 +24,50 @@ export function TabNavigator() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: themeColors.surface,
-          borderTopColor: themeColors.border,
-          paddingHorizontal: 0,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+          borderTopWidth: 0.5,
+          paddingHorizontal: 8,
+          height: Platform.OS === 'ios' ? 84 : 60,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+          paddingTop: 8,
         },
-        tabBarActiveTintColor: themeColors.primary,
-        tabBarInactiveTintColor: themeColors.textSecondary,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '500' },
       }}
     >
       <Tab.Screen
         name="Todos"
         component={TodoListScreen}
         options={{
-          tabBarLabel: 'Todos',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="checkmark-done" size={size} color={color} />
-          ),
-          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="checkmark-done" size={size - 2} color={color} />,
         }}
       />
       <Tab.Screen
         name="Calendar"
         component={CalendarScreen}
         options={{
-          tabBarLabel: 'Calendar',
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size} color={color} />,
-          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="calendar" size={size - 2} color={color} />,
         }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
         options={{
-          tabBarLabel: 'Settings',
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size} color={color} />,
-          headerShown: false,
+          tabBarIcon: ({ color, size }) => <Ionicons name="settings" size={size - 2} color={color} />,
         }}
       />
       <Tab.Screen
         name="Account"
         component={AccountScreen}
         options={{
-          tabBarLabel: 'Account',
           tabBarIcon: ({ color, size }) =>
-            user ? (
-              <Image
-                source={{ uri: user.imageUrl }}
-                style={styles.icon}
-                height={size}
-                width={size}
-              />
+            user?.imageUrl ? (
+              <Image source={{ uri: user.imageUrl }} style={[styles.avatar, { width: size - 2, height: size - 2 }]} />
             ) : (
-              <Ionicons name="person-circle" size={size} color={color} />
+              <Ionicons name="person-circle" size={size - 2} color={color} />
             ),
-          headerShown: false,
         }}
       />
     </Tab.Navigator>
@@ -84,7 +75,7 @@ export function TabNavigator() {
 }
 
 const styles = StyleSheet.create({
-  icon: {
+  avatar: {
     borderRadius: 100,
   },
 });

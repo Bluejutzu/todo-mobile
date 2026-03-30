@@ -1,15 +1,10 @@
-/* eslint-disable react-native/no-inline-styles */
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../../stores/userStore';
-import {
-  getThemeColors,
-  getAvailableThemes,
-  getThemeDisplayName,
-  ThemeName,
-} from '../../theme/colors';
+import { getThemeColors, getAvailableThemes, getThemeDisplayName, isDarkTheme, ThemeName, themes } from '../../theme/colors';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from './OnboardingNavigator';
 
@@ -21,39 +16,12 @@ export function PreferencesScreen() {
   const theme = preferences?.theme || 'dark';
   const colors = getThemeColors(theme);
 
-  const availableThemes = getAvailableThemes();
-  const otherThemes = availableThemes.filter(t => t !== 'light' && t !== 'dark');
-
   const handleThemeSelect = (newTheme: ThemeName) => {
     updatePreferences({ theme: newTheme });
   };
 
   const toggleNotifications = () => {
-    updatePreferences({
-      notificationsEnabled: !preferences?.notificationsEnabled,
-    });
-  };
-
-  const ThemeOption = ({ item, isSelected }: { item: ThemeName; isSelected: boolean }) => {
-    const itemColors = getThemeColors(item);
-    return (
-      <TouchableOpacity
-        style={[
-          styles.themeOption,
-          {
-            backgroundColor: itemColors.surface,
-            borderColor: isSelected ? colors.primary : itemColors.border,
-            borderWidth: isSelected ? 2 : 1,
-          },
-        ]}
-        onPress={() => handleThemeSelect(item)}
-      >
-        <View style={[styles.themePreview, { backgroundColor: itemColors.primary }]} />
-        <Text style={[styles.themeName, { color: itemColors.text }]}>
-          {getThemeDisplayName(item)}
-        </Text>
-      </TouchableOpacity>
-    );
+    updatePreferences({ notificationsEnabled: !preferences?.notificationsEnabled });
   };
 
   return (
@@ -69,34 +37,53 @@ export function PreferencesScreen() {
         <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
-
-            <View style={styles.mainThemes}>
-              <ThemeOption item="light" isSelected={theme === 'light'} />
-              <ThemeOption item="dark" isSelected={theme === 'dark'} />
+            <View style={styles.themeList}>
+              {getAvailableThemes().map(t => {
+                const preview = themes[t];
+                const selected = theme === t;
+                return (
+                  <TouchableOpacity
+                    key={t}
+                    style={[
+                      styles.themeCard,
+                      {
+                        backgroundColor: preview.surface,
+                        borderColor: selected ? colors.primary : preview.border,
+                        borderWidth: selected ? 2 : 1,
+                      },
+                    ]}
+                    onPress={() => handleThemeSelect(t)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.themeCardContent}>
+                      <View style={styles.themePreviewRow}>
+                        <View style={[styles.previewSwatch, { backgroundColor: preview.background }]} />
+                        <View style={[styles.previewSwatch, { backgroundColor: preview.primary }]} />
+                        <View style={[styles.previewSwatch, { backgroundColor: preview.text }]} />
+                      </View>
+                      <View style={styles.themeInfo}>
+                        <Text style={[styles.themeName, { color: preview.text }]}>
+                          {getThemeDisplayName(t)}
+                        </Text>
+                        <Text style={[styles.themeDesc, { color: preview.textSecondary }]}>
+                          {t === 'light' ? 'Warm beige palette' : t === 'dark' ? 'Easy on the eyes' : 'True black'}
+                        </Text>
+                      </View>
+                    </View>
+                    {selected && (
+                      <View style={[styles.checkBadge, { backgroundColor: colors.primary }]}>
+                        <Ionicons name="checkmark" size={14} color={colors.onPrimary} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
             </View>
-
-            <Text style={[styles.subSectionTitle, { color: colors.textSecondary }]}>
-              More Themes
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.otherThemes}
-            >
-              {otherThemes.map(t => (
-                <ThemeOption key={t} item={t} isSelected={theme === t} />
-              ))}
-            </ScrollView>
           </View>
 
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Settings</Text>
-            <View
-              style={[
-                styles.option,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
-            >
+            <View style={[styles.option, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.optionTextContainer}>
                 <Text style={[styles.optionTitle, { color: colors.text }]}>Notifications</Text>
                 <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>
@@ -106,8 +93,8 @@ export function PreferencesScreen() {
               <Switch
                 value={preferences?.notificationsEnabled ?? false}
                 onValueChange={toggleNotifications}
-                trackColor={{ false: '#767577', true: colors.primary }}
-                thumbColor={preferences?.notificationsEnabled ? '#FFFFFF' : '#f4f3f4'}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor="#FFFFFF"
               />
             </View>
           </View>
@@ -117,6 +104,7 @@ export function PreferencesScreen() {
           <TouchableOpacity
             style={[styles.button, { backgroundColor: colors.primary }]}
             onPress={() => navigation.navigate('StorageSelection')}
+            activeOpacity={0.7}
           >
             <Text style={[styles.buttonText, { color: colors.onPrimary }]}>Continue</Text>
           </TouchableOpacity>
@@ -138,66 +126,74 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    marginBottom: 32,
-    marginTop: 20,
+    marginBottom: 28,
+    marginTop: 16,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 18,
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  subSectionTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginTop: 16,
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  mainThemes: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  otherThemes: {
-    flexDirection: 'row',
-    marginHorizontal: -4,
-  },
-  themeOption: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 100,
-    marginRight: 12,
-  },
-  themePreview: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
     marginBottom: 8,
   },
+  subtitle: {
+    fontSize: 16,
+  },
+  section: {
+    marginBottom: 28,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  themeList: {
+    gap: 10,
+  },
+  themeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 14,
+    borderRadius: 12,
+  },
+  themeCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 14,
+  },
+  themePreviewRow: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  previewSwatch: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  themeInfo: {
+    flex: 1,
+  },
   themeName: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  themeDesc: {
+    fontSize: 12,
+  },
+  checkBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
-    borderRadius: 16,
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
   },
   optionTextContainer: {
@@ -205,24 +201,24 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   optionTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   optionDescription: {
-    fontSize: 14,
+    fontSize: 13,
   },
   footer: {
-    marginTop: 16,
+    marginTop: 12,
   },
   button: {
-    height: 56,
-    borderRadius: 28,
+    height: 48,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
   },
 });

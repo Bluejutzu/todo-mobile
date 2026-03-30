@@ -5,85 +5,127 @@ import {
   StyleSheet,
   ActivityIndicator,
   ViewStyle,
-  TextStyle,
+  View,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../../stores/userStore';
 import { getThemeColors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
+type ButtonSize = 'sm' | 'md' | 'lg';
+type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'outline' | 'ghost';
+
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'destructive' | 'outline';
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  icon?: keyof typeof Ionicons.glyphMap;
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
+  fullWidth?: boolean;
 }
+
+const sizeConfig = {
+  sm: { paddingV: 6, paddingH: 12, fontSize: 13, iconSize: 14, minHeight: 32, radius: borderRadius.sm },
+  md: { paddingV: 10, paddingH: 16, fontSize: 15, iconSize: 16, minHeight: 40, radius: borderRadius.md },
+  lg: { paddingV: 14, paddingH: 20, fontSize: 16, iconSize: 18, minHeight: 48, radius: borderRadius.md },
+};
 
 export function Button({
   title,
   onPress,
   variant = 'primary',
+  size = 'md',
+  icon,
   loading = false,
   disabled = false,
   style,
+  fullWidth = false,
 }: ButtonProps) {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
-  const themeColors = getThemeColors(theme);
+  const colors = getThemeColors(theme);
+  const config = sizeConfig[size];
 
-  const buttonStyle: ViewStyle = {
-    backgroundColor:
-      variant === 'primary'
-        ? themeColors.primary
-        : variant === 'secondary'
-          ? themeColors.secondary
-          : variant === 'destructive'
-            ? themeColors.error
-            : 'transparent',
-    borderWidth: variant === 'outline' ? 1 : 0,
-    borderColor: variant === 'outline' ? themeColors.border : undefined,
+  const getBackgroundColor = () => {
+    switch (variant) {
+      case 'primary': return colors.primary;
+      case 'secondary': return colors.surface;
+      case 'destructive': return colors.error;
+      case 'outline': return 'transparent';
+      case 'ghost': return 'transparent';
+    }
   };
 
   const getTextColor = () => {
-    if (variant === 'outline') return themeColors.text;
-    if (variant === 'primary') return themeColors.onPrimary;
-    if (variant === 'destructive') return themeColors.onPrimary;
-    return themeColors.onPrimary; // Default for secondary
+    switch (variant) {
+      case 'primary': return colors.onPrimary;
+      case 'secondary': return colors.text;
+      case 'destructive': return colors.onPrimary;
+      case 'outline': return colors.text;
+      case 'ghost': return colors.primary;
+    }
   };
 
-  const textStyle: TextStyle = {
-    color: getTextColor(),
+  const getBorderColor = () => {
+    if (variant === 'outline') return colors.border;
+    if (variant === 'secondary') return colors.border;
+    return 'transparent';
   };
+
+  const textColor = getTextColor();
 
   return (
     <TouchableOpacity
-      style={[styles.button, buttonStyle, (disabled || loading) && styles.disabled, style]}
+      style={[
+        {
+          backgroundColor: getBackgroundColor(),
+          borderColor: getBorderColor(),
+          borderWidth: variant === 'outline' || variant === 'secondary' ? 1 : 0,
+          paddingVertical: config.paddingV,
+          paddingHorizontal: config.paddingH,
+          borderRadius: config.radius,
+          minHeight: config.minHeight,
+          alignSelf: fullWidth ? 'stretch' : undefined,
+        },
+        styles.base,
+        (disabled || loading) && styles.disabled,
+        style,
+      ]}
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.7}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? themeColors.primary : getTextColor()} />
+        <ActivityIndicator color={textColor} size="small" />
       ) : (
-        <Text style={[styles.text, textStyle]}>{title}</Text>
+        <View style={styles.content}>
+          {icon && <Ionicons name={icon} size={config.iconSize} color={textColor} style={styles.icon} />}
+          <Text style={[{ color: textColor, fontSize: config.fontSize }, styles.text]}>{title}</Text>
+        </View>
       )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
+  base: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    flexDirection: 'row',
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   text: {
-    ...typography.body,
     fontWeight: '600',
+  },
+  icon: {
+    marginRight: 6,
   },
   disabled: {
     opacity: 0.5,

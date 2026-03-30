@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Input } from '../common/Input';
@@ -37,11 +39,34 @@ const PRIORITIES: { value: TodoPriority; label: string; color: string }[] = [
   { value: 'high', label: 'High', color: '#ef4444' },
 ];
 
+function AIHighlight({ active, colors, children }: { active: boolean; colors: any; children: React.ReactNode }) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (active) {
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 300, easing: Easing.out(Easing.ease), useNativeDriver: false }),
+        Animated.delay(1200),
+        Animated.timing(anim, { toValue: 0, duration: 500, easing: Easing.in(Easing.ease), useNativeDriver: false }),
+      ]).start();
+    }
+  }, [active, anim]);
+
+  const bg = anim.interpolate({ inputRange: [0, 1], outputRange: ['transparent', colors.primary + '15'] });
+  const borderColor = anim.interpolate({ inputRange: [0, 1], outputRange: ['transparent', colors.primary + '40'] });
+
+  return (
+    <Animated.View style={{ backgroundColor: bg, borderColor, borderWidth: 1, borderRadius: borderRadius.sm, margin: -4, padding: 4 }}>
+      {children}
+    </Animated.View>
+  );
+}
+
 export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const preferences = useUserStore(state => state.preferences);
   const { updatePreferences } = useUserStore();
-  const themeColors = getThemeColors(theme);
+  const colors = getThemeColors(theme);
   const todos = useTodoStore(state => state.todos);
 
   const [title, setTitle] = useState('');
@@ -51,9 +76,9 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
   const [category, setCategory] = useState('');
   const [color, setColor] = useState<string>('#6366f1');
 
-  // AI State
   const [isAIProcessing, setIsAIProcessing] = useState(false);
   const [aiMessage, setAiMessage] = useState('');
+  const [aiUpdatedFields, setAiUpdatedFields] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (todo) {
@@ -64,7 +89,6 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
       setCategory(todo.category || '');
       setColor(todo.color || '#6366f1');
     } else {
-      // Reset for new todo
       setTitle('');
       setDescription('');
       setPriority('medium');
@@ -74,7 +98,19 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
     }
     setIsAIProcessing(false);
     setAiMessage('');
+    setAiUpdatedFields(new Set());
   }, [todo, visible]);
+
+  const markAIField = (field: string) => {
+    setAiUpdatedFields(prev => new Set(prev).add(field));
+    setTimeout(() => {
+      setAiUpdatedFields(prev => {
+        const next = new Set(prev);
+        next.delete(field);
+        return next;
+      });
+    }, 2000);
+  };
 
   const handleImproveWithAI = async () => {
     if (!title.trim()) {
@@ -91,86 +127,64 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
     try {
       const currentTodo = { title, description, category, priority, dueDate };
 
-      // Improve todo
       if (preferences?.ai?.todoImprovement) {
         setAiMessage('Enhancing title and description...');
-
-        const improvementResult = await aiService.improveTodo(currentTodo, todos, {
+        const result = await aiService.improveTodo(currentTodo, todos, {
           userApiKey: preferences?.ai?.openRouterKey,
           model: preferences?.ai?.model,
         });
-
-        if (improvementResult.success && improvementResult.result) {
-          if (improvementResult.result.title) setTitle(improvementResult.result.title);
-          if (improvementResult.result.description)
-            setDescription(improvementResult.result.description);
-          if (improvementResult.tokensUsed) totalTokens += improvementResult.tokensUsed;
+        if (result.success && result.result) {
+          if (result.result.title) { setTitle(result.result.title); markAIField('title'); }
+          if (result.result.description) { setDescription(result.result.description); markAIField('description'); }
+          if (result.tokensUsed) totalTokens += result.tokensUsed;
           requestsMade++;
-        } else {
-          console.error('[TodoModal] Improvement failed:', improvementResult.error);
         }
       }
 
-      // Suggest category
       if (preferences?.ai?.autoCategory && !category) {
         setAiMessage('Suggesting category...');
-
-        const categoryResult = await aiService.suggestCategory(currentTodo, todos, {
+        const result = await aiService.suggestCategory(currentTodo, todos, {
           userApiKey: preferences?.ai?.openRouterKey,
           model: preferences?.ai?.model,
         });
-
-        if (categoryResult.success && categoryResult.result) {
-          setCategory(categoryResult.result.category);
-          if (categoryResult.tokensUsed) totalTokens += categoryResult.tokensUsed;
+        if (result.success && result.result) {
+          setCategory(result.result.category);
+          markAIField('category');
+          if (result.tokensUsed) totalTokens += result.tokensUsed;
           requestsMade++;
-        } else {
-          console.error('[TodoModal] Category suggestion failed:', categoryResult.error);
         }
       }
 
-      // Suggest priority
       if (preferences?.ai?.prioritySuggestion) {
         setAiMessage('Analyzing priority...');
-
-        const priorityResult = await aiService.suggestPriority(currentTodo, todos, {
+        const result = await aiService.suggestPriority(currentTodo, todos, {
           userApiKey: preferences?.ai?.openRouterKey,
           model: preferences?.ai?.model,
         });
-
-        if (priorityResult.success && priorityResult.result) {
-          setPriority(priorityResult.result.priority);
-          if (priorityResult.tokensUsed) totalTokens += priorityResult.tokensUsed;
+        if (result.success && result.result) {
+          setPriority(result.result.priority);
+          markAIField('priority');
+          if (result.tokensUsed) totalTokens += result.tokensUsed;
           requestsMade++;
-        } else {
-          console.error('[TodoModal] Priority suggestion failed:', priorityResult.error);
         }
       }
 
-      // Update usage statistics
       if (requestsMade > 0 && preferences?.ai) {
-        const currentAI = preferences.ai;
         updatePreferences({
           ai: {
-            ...currentAI,
-            requestCount: (currentAI.requestCount || 0) + requestsMade,
-            totalTokensUsed: (currentAI.totalTokensUsed || 0) + totalTokens,
+            ...preferences.ai,
+            requestCount: (preferences.ai.requestCount || 0) + requestsMade,
+            totalTokensUsed: (preferences.ai.totalTokensUsed || 0) + totalTokens,
             lastUsed: new Date(),
           } as AIConfig,
         });
-        console.log(`[TodoModal] Updated usage: +${requestsMade} requests, +${totalTokens} tokens`);
       }
 
-      setAiMessage('AI improvements applied!');
-
-      setTimeout(() => {
-        setIsAIProcessing(false);
-        setAiMessage('');
-      }, 1500);
+      setAiMessage('Done!');
+      setTimeout(() => { setIsAIProcessing(false); setAiMessage(''); }, 1000);
     } catch (error) {
-      console.error('[TodoModal] AI improvement error:', error);
+      console.error('AI improvement error:', error);
       Alert.alert('Error', 'Failed to improve todo with AI');
-
       setIsAIProcessing(false);
       setAiMessage('');
     }
@@ -178,160 +192,101 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
 
   const handleSave = () => {
     if (!title.trim()) return;
-
-    const todoData: Partial<Todo> = {
+    onSave({
       title: title.trim(),
       description: description.trim() || undefined,
       priority,
       dueDate,
       category: category.trim() || undefined,
       color,
-    };
-
-    onSave(todoData);
+    });
     onClose();
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <SafeAreaView
-        style={[styles.container, { backgroundColor: themeColors.background }]}
-        edges={['top']}
-      >
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-            <Text style={[styles.headerButtonText, { color: themeColors.textSecondary }]}>
-              Cancel
-            </Text>
+            <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: themeColors.text }]}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
             {todo ? 'Edit Todo' : 'New Todo'}
           </Text>
           <TouchableOpacity onPress={handleSave} style={styles.headerButton}>
-            <Text
-              style={[
-                styles.headerButtonText,
-                styles.saveButtonText,
-                {
-                  color: title.trim() ? themeColors.primary : themeColors.textSecondary,
-                },
-              ]}
-            >
+            <Text style={[styles.saveText, { color: title.trim() ? colors.primary : colors.textSecondary }]}>
               Save
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Content */}
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.contentContainer}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Title */}
-          <Input
-            label="Title"
-            value={title}
-            onChangeText={setTitle}
-            placeholder="What needs to be done?"
-            autoFocus
-          />
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
+          <AIHighlight active={aiUpdatedFields.has('title')} colors={colors}>
+            <Input label="Title" value={title} onChangeText={setTitle} placeholder="What needs to be done?" autoFocus />
+          </AIHighlight>
 
-          {/* AI Improve Button */}
           {preferences?.ai?.enabled && (
             <TouchableOpacity
-              style={[styles.aiButton, { backgroundColor: themeColors.primary }]}
+              style={[styles.aiButton, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }]}
               onPress={handleImproveWithAI}
               disabled={isAIProcessing || !title.trim()}
               activeOpacity={0.7}
             >
-              <Ionicons name="sparkles" size={18} color={themeColors.onPrimary} />
-              <Text style={[styles.aiButtonText, { color: themeColors.onPrimary }]}>
-                Improve with AI
-              </Text>
+              <Ionicons name="sparkles" size={16} color={colors.primary} />
+              <Text style={[styles.aiButtonText, { color: colors.primary }]}>Improve with AI</Text>
             </TouchableOpacity>
           )}
 
-          {/* AI Loading Indicator */}
           {isAIProcessing && <AILoadingIndicator message={aiMessage} />}
 
-          {/* Description */}
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: themeColors.text }]}>Description</Text>
-            <TextInput
-              style={[
-                styles.textarea,
-                {
-                  backgroundColor: themeColors.surface,
-                  borderColor: themeColors.border,
-                  color: themeColors.text,
-                },
-              ]}
-              value={description}
-              onChangeText={setDescription}
-              placeholder="Add details..."
-              placeholderTextColor={themeColors.textSecondary}
-              multiline
-              numberOfLines={4}
-              textAlignVertical="top"
-            />
-          </View>
+          <AIHighlight active={aiUpdatedFields.has('description')} colors={colors}>
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.text }]}>Description</Text>
+              <TextInput
+                style={[styles.textarea, { backgroundColor: colors.input, borderColor: colors.border, color: colors.text }]}
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Add details..."
+                placeholderTextColor={colors.textSecondary}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+          </AIHighlight>
 
-          {/* Priority */}
-          <View style={styles.field}>
-            <Text style={[styles.label, { color: themeColors.text }]}>Priority</Text>
-            <View style={styles.priorityContainer}>
-              {PRIORITIES.map(p => (
-                <TouchableOpacity
-                  key={p.value}
-                  style={[
-                    styles.priorityButton,
-                    {
-                      backgroundColor: priority === p.value ? p.color : themeColors.surface,
-                      borderColor: p.color,
-                    },
-                  ]}
-                  onPress={() => setPriority(p.value)}
-                  activeOpacity={0.7}
-                >
-                  <Text
+          <AIHighlight active={aiUpdatedFields.has('priority')} colors={colors}>
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.text }]}>Priority</Text>
+              <View style={styles.priorityContainer}>
+                {PRIORITIES.map(p => (
+                  <TouchableOpacity
+                    key={p.value}
                     style={[
-                      styles.priorityText,
+                      styles.priorityButton,
                       {
-                        color: priority === p.value ? themeColors.onPrimary : themeColors.text,
+                        backgroundColor: priority === p.value ? p.color : colors.input,
+                        borderColor: priority === p.value ? p.color : colors.border,
                       },
                     ]}
+                    onPress={() => setPriority(p.value)}
+                    activeOpacity={0.7}
                   >
-                    {p.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text style={[styles.priorityText, { color: priority === p.value ? '#fff' : colors.text }]}>
+                      {p.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
-          </View>
+          </AIHighlight>
 
-          {/* Due Date */}
-          <DatePicker
-            label="Due Date"
-            value={dueDate}
-            onChange={setDueDate}
-            placeholder="No due date"
-          />
+          <DatePicker label="Due Date" value={dueDate} onChange={setDueDate} placeholder="No due date" />
 
-          {/* Category */}
-          <Input
-            label="Category"
-            value={category}
-            onChangeText={setCategory}
-            placeholder="e.g., Work, Personal, Shopping"
-          />
+          <AIHighlight active={aiUpdatedFields.has('category')} colors={colors}>
+            <Input label="Category" value={category} onChangeText={setCategory} placeholder="e.g., Work, Personal, Shopping" />
+          </AIHighlight>
 
-          {/* Color */}
           <ColorPicker label="Color" value={color} onChange={setColor} />
         </ScrollView>
       </SafeAreaView>
@@ -349,29 +304,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
+    paddingVertical: 12,
     borderBottomWidth: 1,
   },
   headerButton: {
     minWidth: 60,
   },
-  headerButtonText: {
+  cancelText: {
     ...typography.body,
   },
-  saveButtonText: {
+  saveText: {
+    ...typography.body,
     fontWeight: '600',
+    textAlign: 'right',
   },
   headerTitle: {
     ...typography.h3,
+    fontSize: 17,
   },
   content: {
     flex: 1,
   },
   contentContainer: {
     padding: spacing.md,
+    gap: spacing.sm,
   },
   field: {
-    marginBottom: spacing.md,
+    marginBottom: 4,
   },
   label: {
     ...typography.bodySmall,
@@ -392,10 +351,10 @@ const styles = StyleSheet.create({
   },
   priorityButton: {
     flex: 1,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.sm,
     borderRadius: borderRadius.sm,
-    borderWidth: 2,
+    borderWidth: 1.5,
     alignItems: 'center',
   },
   priorityText: {
@@ -406,14 +365,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
+    gap: 6,
+    paddingVertical: 8,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.sm,
-    marginBottom: spacing.md,
+    borderWidth: 1,
   },
   aiButtonText: {
-    ...typography.body,
+    ...typography.bodySmall,
     fontWeight: '600',
   },
 });

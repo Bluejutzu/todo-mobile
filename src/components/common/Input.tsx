@@ -29,7 +29,7 @@ export function Input({ label, error, containerStyle, style, ...props }: InputPr
         style={[
           styles.input,
           {
-            backgroundColor: themeColors.surface,
+            backgroundColor: themeColors.input,
             borderColor: error ? themeColors.error : themeColors.border,
             color: themeColors.text,
           },
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.sm,
     borderWidth: 1,
-    minHeight: 48,
+    minHeight: 44,
   },
   error: {
     ...typography.caption,

@@ -17,38 +17,19 @@ interface TodoItemProps {
   isSelected?: boolean;
 }
 
-export function TodoItem({
-  todo,
-  onPress,
-  onToggle,
-  onLongPress,
-  selectionMode,
-  isSelected,
-}: TodoItemProps) {
+const PRIORITY_COLORS: Record<string, string> = {
+  high: '#ef4444',
+  medium: '#f59e0b',
+  low: '#10b981',
+};
+
+export function TodoItem({ todo, onPress, onToggle, onLongPress, selectionMode, isSelected }: TodoItemProps) {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
-  const themeColors = getThemeColors(theme);
+  const colors = getThemeColors(theme);
+  const priorityColor = PRIORITY_COLORS[todo.priority || 'medium'] || colors.textSecondary;
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return '#ef4444';
-      case 'medium':
-        return '#f59e0b';
-      case 'low':
-        return '#10b981';
-      default:
-        return themeColors.textSecondary;
-    }
-  };
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const priorityColor = getPriorityColor(todo.priority || 'medium');
+  const formatDate = (date: Date) =>
+    new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
   return (
     <TouchableOpacity
@@ -56,107 +37,79 @@ export function TodoItem({
       onLongPress={onLongPress}
       activeOpacity={0.7}
       delayLongPress={500}
-      style={isSelected && selectionMode ? { opacity: styles.card.opacity } : undefined}
     >
       <Card
         style={[
           styles.card,
-          isSelected &&
-            selectionMode && {
-              backgroundColor: themeColors.primary + '15',
-              borderColor: themeColors.text,
-              borderWidth: spacing.xs,
-            },
+          isSelected && selectionMode && {
+            backgroundColor: colors.primary + '12',
+            borderColor: colors.primary,
+          },
         ]}
       >
-        <View style={styles.headerRow}>
+        <View style={styles.row}>
           {selectionMode && (
-            <View style={[styles.selectionCheckbox, { borderColor: themeColors.border }]}>
-              {isSelected && <Ionicons name="checkmark" size={18} color={themeColors.primary} />}
+            <View style={[styles.selectionDot, { borderColor: colors.border }]}>
+              {isSelected && <Ionicons name="checkmark" size={14} color={colors.primary} />}
             </View>
           )}
-          <View style={styles.leftHeader}>
-            <TouchableOpacity
-              style={[
-                styles.checkbox,
-                { borderColor: priorityColor },
-                todo.completed && { backgroundColor: priorityColor, borderColor: priorityColor },
-              ]}
-              onPress={onToggle}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              {todo.completed && <Ionicons name="checkmark" size={14} color="#fff" />}
-            </TouchableOpacity>
 
+          <TouchableOpacity
+            style={[
+              styles.checkbox,
+              { borderColor: priorityColor },
+              todo.completed && { backgroundColor: priorityColor },
+            ]}
+            onPress={onToggle}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            {todo.completed && <Ionicons name="checkmark" size={12} color="#fff" />}
+          </TouchableOpacity>
+
+          <View style={styles.body}>
             <Text
               style={[
                 styles.title,
-                { color: todo.completed ? themeColors.textSecondary : themeColors.text },
-                todo.completed && styles.completedTitle,
+                { color: todo.completed ? colors.textSecondary : colors.text },
+                todo.completed && styles.strikethrough,
               ]}
               numberOfLines={1}
             >
               {todo.title}
             </Text>
-          </View>
 
-          <View style={styles.priorityContainer}>
-            <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
-            <Text style={[styles.priorityText, { color: themeColors.textSecondary }]}>
-              {(todo.priority || 'medium').charAt(0).toUpperCase() +
-                (todo.priority || 'medium').slice(1)}
-            </Text>
-          </View>
-        </View>
-
-        {todo.description && (
-          <Text
-            style={[
-              styles.description,
-              { color: themeColors.textSecondary },
-              todo.completed && styles.completedDescription,
-            ]}
-            numberOfLines={2}
-          >
-            {todo.description}
-          </Text>
-        )}
-
-        <View style={styles.footer}>
-          <View style={styles.footerLeft}>
-            {todo.dueDate && (
-              <View style={styles.footerItem}>
-                <Ionicons name="calendar-outline" size={12} color={themeColors.textSecondary} />
-                <Text style={[styles.footerText, { color: themeColors.textSecondary }]}>
-                  {formatDate(todo.dueDate)}
-                </Text>
-              </View>
+            {todo.description && (
+              <Text style={[styles.desc, { color: colors.textSecondary }]} numberOfLines={1}>
+                {todo.description}
+              </Text>
             )}
-            {todo.category && (
-              <View style={styles.footerItem}>
-                {todo.dueDate && (
-                  <Text style={[styles.footerText, { color: themeColors.textSecondary }]}> • </Text>
-                )}
-                <Ionicons name="pricetag-outline" size={12} color={themeColors.textSecondary} />
-                <Text style={[styles.footerText, { color: themeColors.textSecondary }]}>
-                  {todo.category}
+
+            <View style={styles.meta}>
+              {todo.dueDate && (
+                <View style={styles.metaItem}>
+                  <Ionicons name="calendar-outline" size={11} color={colors.textSecondary} />
+                  <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                    {formatDate(todo.dueDate)}
+                  </Text>
+                </View>
+              )}
+              {todo.category && (
+                <View style={styles.metaItem}>
+                  <Ionicons name="pricetag-outline" size={11} color={colors.textSecondary} />
+                  <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                    {todo.category}
+                  </Text>
+                </View>
+              )}
+              {todo.subtasks && todo.subtasks.length > 0 && (
+                <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                  {todo.subtasks.filter(t => t.completed).length}/{todo.subtasks.length} subtasks
                 </Text>
-              </View>
-            )}
+              )}
+            </View>
           </View>
 
-          {/* Keep tags/subtasks as chips if needed, or just hide them for now based on "instead of everything being in chips" */}
-          {/* I'll keep subtasks as a small indicator if present */}
-          {todo.subtasks && todo.subtasks.length > 0 && (
-            <Text
-              style={[
-                styles.footerText,
-                { color: themeColors.textSecondary, marginLeft: spacing.sm },
-              ]}
-            >
-              {todo.subtasks.filter(t => t.completed).length}/{todo.subtasks.length} subtasks
-            </Text>
-          )}
+          <View style={[styles.priorityDot, { backgroundColor: priorityColor }]} />
         </View>
       </Card>
     </TouchableOpacity>
@@ -166,90 +119,61 @@ export function TodoItem({
 const styles = StyleSheet.create({
   card: {
     marginBottom: spacing.sm,
-    padding: spacing.md,
-    opacity: 0.7,
+    padding: 12,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  leftHeader: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-    marginRight: spacing.sm,
+    gap: 10,
   },
   checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: spacing.md,
+  },
+  body: {
+    flex: 1,
   },
   title: {
-    ...typography.body,
-    fontWeight: '600',
-    flex: 1,
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '500',
   },
-  completedTitle: {
+  strikethrough: {
     textDecorationLine: 'line-through',
-    opacity: 0.7,
+    opacity: 0.6,
   },
-  priorityContainer: {
+  desc: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  meta: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  metaText: {
+    fontSize: 11,
   },
   priorityDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginRight: 4,
   },
-  priorityText: {
-    ...typography.caption,
-    textTransform: 'capitalize',
-    fontWeight: '500',
-  },
-  description: {
-    ...typography.bodySmall,
-    marginBottom: spacing.sm,
-    marginLeft: 34, // Align with title
-    lineHeight: 20,
-  },
-  completedDescription: {
-    opacity: 0.5,
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 34, // Align with title
-    flexWrap: 'wrap',
-  },
-  footerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  footerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  footerText: {
-    ...typography.caption,
-    fontSize: 12,
-  },
-  selectionCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+  selectionDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
-    marginRight: spacing.sm,
     justifyContent: 'center',
     alignItems: 'center',
   },
