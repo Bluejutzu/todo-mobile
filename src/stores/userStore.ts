@@ -3,11 +3,16 @@ import type { UserPreferences } from '../types/user';
 import { storage } from '../services/storage';
 import type { ThemeName } from '../theme/colors';
 
+const VALID_THEMES: ThemeName[] = ['light', 'dark', 'oled'];
+
+function normalizeTheme(theme: string | undefined): ThemeName {
+  if (theme && VALID_THEMES.includes(theme as ThemeName)) return theme as ThemeName;
+  return 'dark';
+}
+
 interface UserStore {
   preferences: UserPreferences | null;
   loading: boolean;
-
-  // Actions
   loadPreferences: () => Promise<void>;
   updatePreferences: (updates: Partial<UserPreferences>) => Promise<void>;
   setTheme: (theme: ThemeName) => Promise<void>;
@@ -52,6 +57,9 @@ export const useUserStore = create<UserStore>((set, get) => ({
   loadPreferences: async () => {
     set({ loading: true });
     const preferences = await storage.getUserPreferences();
+    if (preferences) {
+      preferences.theme = normalizeTheme(preferences.theme);
+    }
     set({ preferences: preferences || defaultPreferences, loading: false });
   },
 

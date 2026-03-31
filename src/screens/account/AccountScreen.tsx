@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Alert, Image, TouchableOpacity, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser, useAuth } from '@clerk/clerk-expo';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,10 +12,19 @@ import { storage } from '../../services/storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { MediaType } from 'expo-image-picker';
-import { Platform, TouchableOpacity } from 'react-native';
 import { SubscriptionCard } from '../../components/subscription/SubscriptionCard';
 import { PaywallModal } from '../../components/subscription/PaywallModal';
 import { PremiumBadge } from '../../components/subscription/PremiumBadge';
+import { spacing } from '../../theme/spacing';
+
+const GREETINGS = [
+  'what we up to now',
+  'ready to crush some tasks',
+  "let's make today count",
+  'time to get things done',
+  "let's be productive",
+  'ready for action',
+];
 
 export function AccountScreen() {
   const { user } = useUser();
@@ -30,93 +39,52 @@ export function AccountScreen() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [showPaywall, setShowPaywall] = useState(false);
-
-  // Edit Profile State
-  const [showEditProfileDialog, setShowEditProfileDialog] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
   const [editFirstName, setEditFirstName] = useState(user?.firstName || '');
   const [editLastName, setEditLastName] = useState(user?.lastName || '');
   const [updatingProfile, setUpdatingProfile] = useState(false);
-
-  const greetingPhrases = [
-    'what we up to now',
-    'ready to crush some tasks',
-    "let's make today count",
-    'time to get things done',
-    "what's on the agenda",
-    "let's be productive",
-    'ready for action',
-    "let's make it happen",
-  ];
-
-  const [randomPhrase] = useState(
-    () => greetingPhrases[Math.floor(Math.random() * greetingPhrases.length)]
-  );
+  const [randomPhrase] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
 
   React.useEffect(() => {
-    checkExportReminder();
+    (async () => {
+      setShowExportReminder(await storage.shouldShowExportReminder());
+      setLastExportDate(await storage.getLastExportDate());
+    })();
   }, []);
-
-  const checkExportReminder = async () => {
-    const shouldShow = await storage.shouldShowExportReminder();
-    setShowExportReminder(shouldShow);
-    const date = await storage.getLastExportDate();
-    setLastExportDate(date);
-  };
 
   const handleExport = async () => {
     try {
       setExporting(true);
+      let success: boolean;
       if (Platform.OS === 'android') {
-        const result = await DocumentPicker.getDocumentAsync({
-          type: 'application/*',
-          copyToCacheDirectory: false,
-        });
-
+        const result = await DocumentPicker.getDocumentAsync({ type: 'application/*', copyToCacheDirectory: false });
         if (!result.canceled && result.assets[0]) {
-          const directoryUri = result.assets[0].uri.substring(
-            0,
-            result.assets[0].uri.lastIndexOf('/')
-          );
-          const success = await storage.exportData(directoryUri);
-          if (success) {
-            Alert.alert('Success', 'Data exported successfully');
-            await checkExportReminder();
-          } else {
-            Alert.alert('Error', 'Failed to export data');
-          }
+          const dir = result.assets[0].uri.substring(0, result.assets[0].uri.lastIndexOf('/'));
+          success = await storage.exportData(dir);
+        } else {
+          setExporting(false);
+          return;
         }
       } else {
-        const success = await storage.exportData();
-        if (success) {
-          Alert.alert('Success', 'Data exported successfully');
-          await checkExportReminder();
-        } else {
-          Alert.alert('Error', 'Failed to export data');
-        }
-        setExporting(false);
+        success = await storage.exportData();
+      }
+      Alert.alert(success ? 'Success' : 'Error', success ? 'Data exported successfully' : 'Failed to export data');
+      if (success) {
+        setShowExportReminder(await storage.shouldShowExportReminder());
+        setLastExportDate(await storage.getLastExportDate());
       }
     } catch (error) {
       console.error('Export error:', error);
       Alert.alert('Error', 'Failed to export data');
+    } finally {
       setExporting(false);
     }
   };
 
   const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+    Alert.alert('Sign Out', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut();
-          } catch (error) {
-            console.error('Sign out error:', error);
-            Alert.alert('Error', 'Failed to sign out');
-          }
-        },
-      },
+      { text: 'Sign Out', style: 'destructive', onPress: () => signOut().catch(() => Alert.alert('Error', 'Failed to sign out')) },
     ]);
   };
 
@@ -129,12 +97,9 @@ export function AccountScreen() {
         quality: 0.5,
         base64: true,
       });
-
       if (!result.canceled && result.assets[0].base64) {
         setUpdatingProfile(true);
-        await user?.setProfileImage({
-          file: `data:${result.assets[0].mimeType};base64,${result.assets[0].base64}`,
-        });
+        await user?.setProfileImage({ file: `data:${result.assets[0].mimeType};base64,${result.assets[0].base64}` });
         Alert.alert('Success', 'Profile picture updated!');
       }
     } catch (error) {
@@ -146,19 +111,12 @@ export function AccountScreen() {
   };
 
   const handleUpdateProfile = async () => {
-    if (!editFirstName.trim()) {
-      Alert.alert('Error', 'First name is required');
-      return;
-    }
-
+    if (!editFirstName.trim()) { Alert.alert('Error', 'First name is required'); return; }
     try {
       setUpdatingProfile(true);
-      await user?.update({
-        firstName: editFirstName,
-        lastName: editLastName,
-      });
-      setShowEditProfileDialog(false);
-      Alert.alert('Success', 'Profile updated successfully!');
+      await user?.update({ firstName: editFirstName, lastName: editLastName });
+      setShowEditProfile(false);
+      Alert.alert('Success', 'Profile updated!');
     } catch (error) {
       console.error('Update profile error:', error);
       Alert.alert('Error', 'Failed to update profile');
@@ -172,75 +130,50 @@ export function AccountScreen() {
       Alert.alert('Error', 'Please type "delete" to confirm');
       return;
     }
-
-    Alert.alert(
-      'Final Confirmation',
-      'This action cannot be undone. All your data will be permanently deleted from our servers.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Account',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              if (getToken) {
-                const token = await getToken();
-                if (token) {
-                  const payload = JSON.parse(atob(token.split('.')[1]));
-                  const userId = payload.sub;
-
-                  const client = await storage.getSupabaseClient(getToken);
-                  if (client) {
-                    await client.from('todos').delete().eq('user_id', userId);
-                  }
-                }
+    Alert.alert('Final Confirmation', 'This cannot be undone. All data will be permanently deleted.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete Account',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            if (getToken) {
+              const token = await getToken();
+              if (token) {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const client = await storage.getSupabaseClient(getToken);
+                if (client) await client.from('todos').delete().eq('user_id', payload.sub);
               }
-
-              await user?.delete();
-              await storage.clearAll();
-              await signOut();
-
-              Alert.alert(
-                'Account Deleted',
-                'Your account and all data have been permanently deleted.'
-              );
-            } catch (error) {
-              console.error('Delete account error:', error);
-              Alert.alert(
-                'Error',
-                'Failed to delete account. Please try again or contact support.'
-              );
             }
-          },
+            await user?.delete();
+            await storage.clearAll();
+            await signOut();
+          } catch (error) {
+            console.error('Delete account error:', error);
+            Alert.alert('Error', 'Failed to delete account. Please try again.');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView style={styles.content}>
-        <View style={styles.greetingSection}>
-          <View style={styles.greetingTextContainer}>
-            <View style={styles.greetingHeader}>
-              <Text style={[styles.greetingText, { color: colors.text }]}>
-                Hey{' '}
-                <Text style={styles.greetingName}>
-                  {user?.firstName || preferences?.name || 'there'}
-                </Text>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        <View style={styles.greeting}>
+          <View style={styles.greetingText}>
+            <View style={styles.greetingRow}>
+              <Text style={[styles.greetingHey, { color: colors.text }]}>
+                Hey <Text style={styles.bold}>{user?.firstName || preferences?.name || 'there'}</Text>
               </Text>
               <PremiumBadge />
             </View>
-            <Text style={[styles.greetingPhrase, { color: colors.textSecondary }]}>
-              {randomPhrase}
-            </Text>
+            <Text style={[styles.phrase, { color: colors.textSecondary }]}>{randomPhrase}</Text>
           </View>
           <TouchableOpacity onPress={handleUpdateImage} disabled={updatingProfile}>
-            {user?.imageUrl && (
-              <Image source={{ uri: user.imageUrl }} style={styles.profileImage} />
-            )}
-            <View style={[styles.editIconBadge, { backgroundColor: colors.primary }]}>
-              <Ionicons name="pencil" size={12} />
+            {user?.imageUrl && <Image source={{ uri: user.imageUrl }} style={styles.avatar} />}
+            <View style={[styles.editBadge, { backgroundColor: colors.primary }]}>
+              <Ionicons name="pencil" size={10} color={colors.onPrimary} />
             </View>
           </TouchableOpacity>
         </View>
@@ -248,92 +181,24 @@ export function AccountScreen() {
         <SubscriptionCard onUpgrade={() => setShowPaywall(true)} />
 
         <Card style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text
-              style={[styles.sectionTitle, styles.sectionTitleNoMargin, { color: colors.text }]}
-            >
-              Account Details
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                setEditFirstName(user?.firstName || '');
-                setEditLastName(user?.lastName || '');
-                setShowEditProfileDialog(true);
-              }}
-            >
-              <Text style={[styles.editButtonText, { color: colors.primary }]}>Edit</Text>
+          <View style={styles.sectionRow}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Account Details</Text>
+            <TouchableOpacity onPress={() => { setEditFirstName(user?.firstName || ''); setEditLastName(user?.lastName || ''); setShowEditProfile(true); }}>
+              <Text style={[styles.editLink, { color: colors.primary }]}>Edit</Text>
             </TouchableOpacity>
           </View>
-          <View style={styles.spacer16} />
           {user && (
-            <View style={styles.detailsContainer}>
-              <View style={styles.detailRow}>
-                <Ionicons name="person" size={20} color={colors.textSecondary} />
-                <View style={styles.detailContent}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Name</Text>
-                  <Text style={[styles.detailValue, { color: colors.text }]}>
-                    {user.fullName ||
-                      `${user.firstName || ''} ${user.lastName || ''}`.trim() ||
-                      'Not set'}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Ionicons name="mail" size={20} color={colors.textSecondary} />
-                <View style={styles.detailContent}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Email</Text>
-                  <Text style={[styles.detailValue, { color: colors.text }]}>
-                    {user.primaryEmailAddress?.emailAddress || 'Not set'}
-                  </Text>
-                </View>
-              </View>
-
-              {user.phoneNumbers && user.phoneNumbers.length > 0 && (
-                <View style={styles.detailRow}>
-                  <Ionicons name="call" size={20} color={colors.textSecondary} />
-                  <View style={styles.detailContent}>
-                    <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>Phone</Text>
-                    <Text style={[styles.detailValue, { color: colors.text }]}>
-                      {user.phoneNumbers[0].phoneNumber}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              <View style={styles.detailRow}>
-                <Ionicons name="calendar" size={20} color={colors.textSecondary} />
-                <View style={styles.detailContent}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    Member Since
-                  </Text>
-                  <Text style={[styles.detailValue, { color: colors.text }]}>
-                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.detailRow}>
-                <Ionicons name="shield-checkmark" size={20} color={colors.textSecondary} />
-                <View style={styles.detailContent}>
-                  <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>
-                    Email Verified
-                  </Text>
-                  <Text
-                    style={[
-                      styles.detailValue,
-                      {
-                        color:
-                          user.primaryEmailAddress?.verification?.status === 'verified'
-                            ? colors.success
-                            : colors.warning,
-                      },
-                    ]}
-                  >
-                    {user.primaryEmailAddress?.verification?.status === 'verified' ? 'Yes' : 'No'}
-                  </Text>
-                </View>
-              </View>
+            <View style={styles.details}>
+              <DetailRow icon="person" label="Name" value={user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Not set'} colors={colors} />
+              <DetailRow icon="mail" label="Email" value={user.primaryEmailAddress?.emailAddress || 'Not set'} colors={colors} />
+              <DetailRow icon="calendar" label="Member Since" value={user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'} colors={colors} />
+              <DetailRow
+                icon="shield-checkmark"
+                label="Verified"
+                value={user.primaryEmailAddress?.verification?.status === 'verified' ? 'Yes' : 'No'}
+                valueColor={user.primaryEmailAddress?.verification?.status === 'verified' ? colors.success : colors.warning}
+                colors={colors}
+              />
             </View>
           )}
         </Card>
@@ -341,155 +206,72 @@ export function AccountScreen() {
         <Card style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Data Export</Text>
           {showExportReminder && (
-            <View
-              style={[
-                styles.reminderBanner,
-                { backgroundColor: colors.warning + '20', borderColor: colors.warning },
-              ]}
-            >
-              <Ionicons name="warning" size={20} color={colors.warning} />
-              <Text style={[styles.reminderText, { color: colors.warning }]}>
-                It&apos;s been 30 days since your last export
-              </Text>
+            <View style={[styles.banner, { backgroundColor: colors.warning + '18', borderColor: colors.warning + '40' }]}>
+              <Ionicons name="warning" size={16} color={colors.warning} />
+              <Text style={[styles.bannerText, { color: colors.warning }]}>30+ days since last export</Text>
             </View>
           )}
           {lastExportDate && (
-            <>
-              <Text style={[styles.bodyText, { color: colors.textSecondary }]}>
-                Last export: {lastExportDate.toLocaleDateString()}
-              </Text>
-              <Text style={[styles.bodyText, { color: colors.text }]}>
-                Next possible export:{' '}
-                {new Date(
-                  lastExportDate.setDate(lastExportDate.getDate() + 30)
-                ).toLocaleDateString()}
-              </Text>
-            </>
+            <Text style={[styles.meta, { color: colors.textSecondary }]}>
+              Last export: {lastExportDate.toLocaleDateString()}
+            </Text>
           )}
           <Button
             title={exporting ? 'Exporting...' : 'Export Data'}
             onPress={handleExport}
             variant="secondary"
+            size="sm"
             disabled={!showExportReminder || exporting}
+            style={styles.actionButton}
           />
         </Card>
 
-        <Card style={[styles.section, styles.dangerSection]}>
+        <Card style={[styles.section, { borderColor: colors.error + '40' }]}>
           <Text style={[styles.sectionTitle, { color: colors.error }]}>Danger Zone</Text>
-          <Text style={[styles.bodyText, styles.dangerText, { color: colors.textSecondary }]}>
-            If you need to redo the onboarding process or want to sign in with a new account then
-            this is the place to go.
+          <Text style={[styles.meta, { color: colors.textSecondary }]}>
+            Sign out or permanently delete your account and all data.
           </Text>
-          <Button
-            title="Sign Out"
-            onPress={handleSignOut}
-            variant="secondary"
-            style={styles.signOutButton}
-          />
-          <Text style={[styles.bodyText, styles.dangerText, { color: colors.textSecondary }]}>
-            Deleting your account will permanently remove all your data including todos,
-            preferences, and account information from our cloud storage and account provider
-            (Clerk). This action cannot be undone.
-            {!showExportReminder && (
-              <Text style={[styles.bodyText, { color: colors.text }]}>
-                {'\n\n'}
-                If you need to create a new backup, but are unable to, contact support.
-              </Text>
-            )}
-          </Text>
-          <Button
-            title="Delete Account"
-            onPress={() => setShowDeleteDialog(true)}
-            variant="destructive"
-          />
+          <View style={styles.dangerButtons}>
+            <Button title="Sign Out" onPress={handleSignOut} variant="outline" size="sm" />
+            <Button title="Delete Account" onPress={() => setShowDeleteDialog(true)} variant="destructive" size="sm" />
+          </View>
         </Card>
       </ScrollView>
 
-      {showEditProfileDialog && (
-        <View style={styles.dialogOverlay}>
-          <View style={[styles.dialogContainer, { backgroundColor: colors.surface }]}>
+      {showEditProfile && (
+        <View style={styles.overlay}>
+          <View style={[styles.dialog, { backgroundColor: colors.surfaceElevated }]}>
             <Text style={[styles.dialogTitle, { color: colors.text }]}>Edit Profile</Text>
-
-            <View style={styles.inputContainer}>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>First Name</Text>
-              <Input
-                value={editFirstName}
-                onChangeText={setEditFirstName}
-                placeholder="First Name"
-              />
+            <View style={styles.dialogField}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>First Name</Text>
+              <Input value={editFirstName} onChangeText={setEditFirstName} placeholder="First Name" />
             </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Last Name</Text>
+            <View style={styles.dialogField}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Last Name</Text>
               <Input value={editLastName} onChangeText={setEditLastName} placeholder="Last Name" />
             </View>
-
             <View style={styles.dialogButtons}>
-              <Button
-                title="Cancel"
-                onPress={() => setShowEditProfileDialog(false)}
-                variant="secondary"
-              />
-              <Button
-                title={updatingProfile ? 'Saving...' : 'Save Changes'}
-                onPress={handleUpdateProfile}
-                variant="primary"
-                disabled={updatingProfile}
-              />
+              <Button title="Cancel" onPress={() => setShowEditProfile(false)} variant="outline" size="sm" />
+              <Button title={updatingProfile ? 'Saving...' : 'Save'} onPress={handleUpdateProfile} size="sm" disabled={updatingProfile} />
             </View>
           </View>
         </View>
       )}
 
       {showDeleteDialog && (
-        <View style={styles.dialogOverlay}>
-          <View style={[styles.dialogContainer, { backgroundColor: colors.surface }]}>
+        <View style={styles.overlay}>
+          <View style={[styles.dialog, { backgroundColor: colors.surfaceElevated }]}>
             <Text style={[styles.dialogTitle, { color: colors.text }]}>Delete Account</Text>
-            <Text style={[styles.dialogText, { color: colors.textSecondary }]}>
-              Are you sure you want to delete your account? You will lose:
+            <Text style={[styles.meta, { color: colors.textSecondary }]}>
+              This will permanently delete all todos, preferences, and account data. This cannot be undone.
             </Text>
-            <View style={styles.dataList}>
-              <Text style={[styles.dataItem, { color: colors.textSecondary }]}>
-                • All your todos
-              </Text>
-              <Text style={[styles.dataItem, { color: colors.textSecondary }]}>
-                • Your preferences and settings
-              </Text>
-              <Text style={[styles.dataItem, { color: colors.textSecondary }]}>
-                • Your account information
-              </Text>
+            <View style={styles.dialogField}>
+              <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>Type "delete" to confirm:</Text>
+              <Input value={deleteConfirmText} onChangeText={setDeleteConfirmText} placeholder="delete" autoCapitalize="none" />
             </View>
-            <Text style={[styles.dialogWarning, { color: colors.error }]}>
-              No backup will be created. This action is permanent.
-            </Text>
-
-            <View style={styles.confirmSection}>
-              <Text style={[styles.confirmLabel, { color: colors.textSecondary }]}>
-                Type &quot;delete&quot; to confirm:
-              </Text>
-              <Input
-                value={deleteConfirmText}
-                onChangeText={setDeleteConfirmText}
-                placeholder="delete"
-                autoCapitalize="none"
-              />
-            </View>
-
             <View style={styles.dialogButtons}>
-              <Button
-                title="Cancel"
-                onPress={() => {
-                  setShowDeleteDialog(false);
-                  setDeleteConfirmText('');
-                }}
-                variant="secondary"
-              />
-              <Button
-                title="Delete Account"
-                onPress={handleDeleteAccount}
-                variant="primary"
-                disabled={deleteConfirmText.toLowerCase() !== 'delete'}
-              />
+              <Button title="Cancel" onPress={() => { setShowDeleteDialog(false); setDeleteConfirmText(''); }} variant="outline" size="sm" />
+              <Button title="Delete" onPress={handleDeleteAccount} variant="destructive" size="sm" disabled={deleteConfirmText.toLowerCase() !== 'delete'} />
             </View>
           </View>
         </View>
@@ -500,181 +282,51 @@ export function AccountScreen() {
   );
 }
 
+function DetailRow({ icon, label, value, valueColor, colors }: { icon: string; label: string; value: string; valueColor?: string; colors: any }) {
+  return (
+    <View style={detailStyles.row}>
+      <Ionicons name={icon as any} size={18} color={colors.textSecondary} />
+      <View style={detailStyles.content}>
+        <Text style={[detailStyles.label, { color: colors.textSecondary }]}>{label}</Text>
+        <Text style={[detailStyles.value, { color: valueColor || colors.text }]}>{value}</Text>
+      </View>
+    </View>
+  );
+}
+
+const detailStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  content: { flex: 1 },
+  label: { fontSize: 11, marginBottom: 1 },
+  value: { fontSize: 14, fontWeight: '500' },
+});
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    padding: 16,
-  },
-  greetingSection: {
-    paddingVertical: 16,
-    paddingHorizontal: 4,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  greetingTextContainer: {
-    flex: 1,
-  },
-  greetingHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  profileImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginLeft: 16,
-  },
-  greetingText: {
-    fontSize: 28,
-  },
-  greetingName: {
-    fontWeight: '700',
-  },
-  greetingPhrase: {
-    fontSize: 16,
-  },
-  section: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  detailsContainer: {
-    gap: 16,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  detailContent: {
-    flex: 1,
-  },
-  detailLabel: {
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  detailValue: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  bodyText: {
-    fontSize: 14,
-    marginBottom: 12,
-  },
-  dangerText: {
-    marginBottom: 16,
-  },
-  reminderBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 8,
-    marginBottom: 12,
-  },
-  reminderText: {
-    fontSize: 14,
-    flex: 1,
-  },
-  dangerSection: {
-    borderColor: '#ff4444',
-    borderWidth: 1,
-  },
-  dialogOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  dialogContainer: {
-    width: '100%',
-    maxWidth: 400,
-    borderRadius: 16,
-    padding: 24,
-  },
-  dialogTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
-  dialogText: {
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  dataList: {
-    marginBottom: 16,
-    paddingLeft: 8,
-  },
-  dataItem: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  dialogWarning: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 20,
-  },
-  confirmSection: {
-    marginBottom: 24,
-  },
-  confirmLabel: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  dialogButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  signOutButton: {
-    marginBottom: 12,
-  },
-  editIconBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#000000',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  sectionTitleNoMargin: {
-    marginBottom: 0,
-  },
-  editButtonText: {
-    fontWeight: '600',
-  },
-  spacer16: {
-    height: 16,
-  },
+  container: { flex: 1 },
+  scroll: { flex: 1 },
+  content: { padding: spacing.md, paddingBottom: 100 },
+  greeting: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, marginBottom: 8 },
+  greetingText: { flex: 1 },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+  greetingHey: { fontSize: 24 },
+  bold: { fontWeight: '700' },
+  phrase: { fontSize: 14 },
+  avatar: { width: 44, height: 44, borderRadius: 22, marginLeft: 12 },
+  editBadge: { position: 'absolute', bottom: 0, right: 0, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  section: { marginBottom: spacing.md },
+  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  sectionTitle: { fontSize: 16, fontWeight: '600', marginBottom: spacing.sm },
+  editLink: { fontSize: 13, fontWeight: '600' },
+  details: { gap: 14 },
+  meta: { fontSize: 13, marginBottom: 8 },
+  banner: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 8, borderWidth: 1, gap: 8, marginBottom: 10 },
+  bannerText: { fontSize: 13, flex: 1 },
+  actionButton: { alignSelf: 'flex-start' },
+  dangerButtons: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  overlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  dialog: { width: '100%', maxWidth: 360, borderRadius: 16, padding: 20 },
+  dialogTitle: { fontSize: 20, fontWeight: '700', marginBottom: 12 },
+  dialogField: { marginBottom: 14 },
+  fieldLabel: { fontSize: 13, marginBottom: 6 },
+  dialogButtons: { flexDirection: 'row', gap: 10, marginTop: 4 },
 });

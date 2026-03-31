@@ -137,7 +137,6 @@ export function AuthScreen() {
         setShowResetDialog(false);
         Alert.alert('Success', 'Password reset successfully!');
       } else {
-        console.log(result);
         Alert.alert('Error', 'Failed to reset password. Please check the code and try again.');
       }
     } catch (err: any) {
@@ -164,7 +163,7 @@ export function AuthScreen() {
             style={[
               styles.input,
               {
-                backgroundColor: colors.surface,
+                backgroundColor: colors.input,
                 color: colors.text,
                 borderColor: colors.border,
               },
@@ -180,7 +179,7 @@ export function AuthScreen() {
             style={[
               styles.input,
               {
-                backgroundColor: colors.surface,
+                backgroundColor: colors.input,
                 color: colors.text,
                 borderColor: colors.border,
               },
@@ -393,7 +392,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
   },
@@ -401,21 +400,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   form: {
-    gap: 16,
+    gap: 12,
   },
   input: {
-    height: 56,
+    height: 48,
     borderRadius: 12,
     borderWidth: 1,
     paddingHorizontal: 16,
     fontSize: 16,
   },
   button: {
-    height: 56,
-    borderRadius: 28,
+    height: 48,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
+    marginTop: 4,
   },
   buttonText: {
     fontSize: 16,
@@ -435,7 +434,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   socialButton: {
-    height: 56,
+    height: 48,
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: 'row',

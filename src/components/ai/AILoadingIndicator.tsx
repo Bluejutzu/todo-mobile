@@ -1,11 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../../stores/userStore';
-import { getThemeColors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
+import { getThemeColors, isDarkTheme } from '../../theme/colors';
+import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import MaskedView from '@react-native-masked-view/masked-view';
 
 interface AILoadingIndicatorProps {
   message?: string;
@@ -13,103 +13,109 @@ interface AILoadingIndicatorProps {
 
 export function AILoadingIndicator({ message = 'AI is thinking...' }: AILoadingIndicatorProps) {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
-  const themeColors = getThemeColors(theme);
+  const colors = getThemeColors(theme);
+  const dark = isDarkTheme(theme);
 
   const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(0.6)).current;
 
   useEffect(() => {
-    const animation = Animated.loop(
+    const shimmer = Animated.loop(
       Animated.timing(shimmerAnim, {
         toValue: 1,
-        duration: 2000,
+        duration: 1500,
+        easing: Easing.inOut(Easing.ease),
         useNativeDriver: true,
       })
     );
-    animation.start();
-    return () => animation.stop();
-  }, [shimmerAnim]);
+
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.6,
+          duration: 800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    shimmer.start();
+    pulse.start();
+    return () => { shimmer.stop(); pulse.stop(); };
+  }, [shimmerAnim, pulseAnim]);
 
   const translateX = shimmerAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [-300, 300],
+    outputRange: [-200, 200],
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.surface }]}>
-      <MaskedView
-        style={styles.maskedView}
-        maskElement={
-          <View style={styles.maskContainer}>
-            <Text style={[styles.text, styles.maskText]}>{message}</Text>
-          </View>
-        }
-      >
-        {/* Base text color */}
-        <Text style={[styles.text, styles.baseText, { color: themeColors.textSecondary }]}>
-          {message}
-        </Text>
-
-        {/* Animated shimmer gradient */}
-        <Animated.View
-          style={[
-            styles.shimmerContainer,
-            {
-              transform: [{ translateX }],
-            },
-          ]}
-        >
-          <LinearGradient
-            colors={[
-              'transparent',
-              theme === 'dark' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(100, 100, 100, 0.8)',
-              'transparent',
-            ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.gradient}
-          />
+    <View style={[styles.container, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '25' }]}>
+      <View style={styles.row}>
+        <Animated.View style={{ opacity: pulseAnim }}>
+          <Ionicons name="sparkles" size={16} color={colors.primary} />
         </Animated.View>
-      </MaskedView>
+        <Text style={[styles.text, { color: colors.primary }]}>{message}</Text>
+      </View>
+      <View style={styles.shimmerBar}>
+        <View style={[styles.shimmerTrack, { backgroundColor: colors.primary + '15' }]}>
+          <Animated.View style={[styles.shimmerGlow, { transform: [{ translateX }] }]}>
+            <LinearGradient
+              colors={['transparent', colors.primary + '40', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.gradient}
+            />
+          </Animated.View>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    padding: spacing.md,
-    borderRadius: 8,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
     marginVertical: spacing.sm,
-    overflow: 'hidden',
   },
-  maskedView: {
-    height: 30,
-    justifyContent: 'center',
-  },
-  maskContainer: {
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
+  row: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
   },
   text: {
-    ...typography.body,
-    textAlign: 'center',
-    paddingVertical: spacing.xs,
+    ...typography.bodySmall,
+    fontWeight: '500',
   },
-  maskText: {
-    color: '#000',
+  shimmerBar: {
+    height: 3,
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  baseText: {
-    opacity: 0.5,
+  shimmerTrack: {
+    flex: 1,
+    height: '100%',
+    borderRadius: 2,
   },
-  shimmerContainer: {
+  shimmerGlow: {
     position: 'absolute',
     top: 0,
-    left: -300,
-    width: 600,
+    left: -200,
+    width: 400,
     height: '100%',
   },
   gradient: {
     flex: 1,
-    width: '100%',
   },
 });

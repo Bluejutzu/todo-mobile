@@ -29,8 +29,6 @@ export function AISettingsPanel() {
   const toggleFeature = (feature: keyof AIConfig, value: boolean) => {
     const currentAI = preferences?.ai;
     if (!currentAI) return;
-    console.log('Toggling feature:', feature, value);
-
     updatePreferences({
       ai: {
         ...currentAI,

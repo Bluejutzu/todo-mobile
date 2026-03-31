@@ -14,14 +14,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { useUserStore } from '../../stores/userStore';
-import { getThemeColors } from '../../theme/colors';
+import { getThemeColors, getAvailableThemes, getThemeDisplayName, themes, ThemeName } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-
 import { storage } from '../../services/storage';
 import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
-import { getAvailableThemes, getThemeDisplayName, themes } from '../../theme/colors';
 import { AISettingsModal } from '../../components/ai/AISettingsModal';
 import { AIUsageModal } from '../../components/ai/AIUsageModal';
 import { useSubscription } from '../../hooks/useSubscription';
@@ -34,8 +32,7 @@ export function SettingsScreen() {
   const preferences = useUserStore(state => state.preferences);
   const { setTheme } = useUserStore();
   const { isPremium } = useSubscription();
-
-  const themeColors = getThemeColors(theme);
+  const colors = getThemeColors(theme);
 
   const [storagePath, setStoragePath] = useState<string | null>(null);
   const [migrating, setMigrating] = useState(false);
@@ -46,62 +43,45 @@ export function SettingsScreen() {
   const [showPaywall, setShowPaywall] = useState(false);
 
   React.useEffect(() => {
-    loadStoragePath();
-    loadStorageMethod();
+    (async () => {
+      setStoragePath(await storage.getStoragePath());
+      setStorageMethodState(await storage.getStorageMethod());
+    })();
   }, []);
-
-  const loadStoragePath = async () => {
-    const path = await storage.getStoragePath();
-    setStoragePath(path);
-  };
-
-  const loadStorageMethod = async () => {
-    const method = await storage.getStorageMethod();
-    setStorageMethodState(method);
-  };
 
   const handleSelectStorage = async () => {
     if (Platform.OS !== 'android') {
-      Alert.alert(
-        'Not Supported',
-        'Changing storage location is currently only supported on Android.'
-      );
+      Alert.alert('Not Supported', 'Changing storage location is currently only supported on Android.');
       return;
     }
-
     try {
       const SAF = (FileSystem as any).StorageAccessFramework;
       const permissions = await SAF.requestDirectoryPermissionsAsync();
       if (permissions.granted) {
         const uri = permissions.directoryUri;
-
-        Alert.alert(
-          'Change Storage Location',
-          'Do you want to move existing data to the new location?',
-          [
-            {
-              text: 'No, just change location',
-              onPress: async () => {
-                await storage.setStoragePath(uri);
+        Alert.alert('Change Storage Location', 'Move existing data to the new location?', [
+          {
+            text: 'Just change location',
+            onPress: async () => {
+              await storage.setStoragePath(uri);
+              setStoragePath(uri);
+            },
+          },
+          {
+            text: 'Move data',
+            onPress: async () => {
+              setMigrating(true);
+              const success = await storage.migrateData(uri);
+              setMigrating(false);
+              if (success) {
                 setStoragePath(uri);
-              },
+                Alert.alert('Success', 'Data migrated successfully');
+              } else {
+                Alert.alert('Error', 'Failed to migrate data');
+              }
             },
-            {
-              text: 'Yes, move data',
-              onPress: async () => {
-                setMigrating(true);
-                const success = await storage.migrateData(uri);
-                setMigrating(false);
-                if (success) {
-                  setStoragePath(uri);
-                  Alert.alert('Success', 'Data migrated successfully');
-                } else {
-                  Alert.alert('Error', 'Failed to migrate data');
-                }
-              },
-            },
-          ]
-        );
+          },
+        ]);
       }
     } catch (error) {
       console.error('Error selecting storage:', error);
@@ -110,20 +90,15 @@ export function SettingsScreen() {
 
   const handleSwitchStorage = async () => {
     const newMethod = storageMethod === 'cloud' ? 'local' : 'cloud';
-
-    // Check if data can be migrated
     const { canMigrate, sizeFormatted } = await storage.canMigrateData();
 
     if (!canMigrate) {
-      Alert.alert(
-        'Data Too Large',
-        `Your data (${sizeFormatted}) exceeds the 5MB limit for cloud storage. Please reduce your data size or continue using local storage.`
-      );
+      Alert.alert('Data Too Large', `Your data (${sizeFormatted}) exceeds the limit for cloud storage.`);
       return;
     }
 
-    const methodName = newMethod === 'cloud' ? 'Cloud Storage' : 'Local Storage';
-    Alert.alert('Switch Storage', `Switch to ${methodName}? Your data will be migrated.`, [
+    const label = newMethod === 'cloud' ? 'Cloud Storage' : 'Local Storage';
+    Alert.alert('Switch Storage', `Switch to ${label}? Your data will be migrated.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Switch',
@@ -133,7 +108,7 @@ export function SettingsScreen() {
           setSwitching(false);
           if (success) {
             setStorageMethodState(newMethod);
-            Alert.alert('Success', `Switched to ${methodName}`);
+            Alert.alert('Success', `Switched to ${label}`);
           } else {
             Alert.alert('Error', 'Failed to switch storage method');
           }
@@ -145,267 +120,138 @@ export function SettingsScreen() {
   return (
     <View style={styles.container}>
       <ScrollView
-        style={{ backgroundColor: themeColors.background, paddingTop: insets.top }}
+        style={{ backgroundColor: colors.background, paddingTop: insets.top }}
         contentContainerStyle={styles.content}
       >
-        <Text style={[styles.title, { color: themeColors.text }]}>Settings</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
 
-        {/* Subscription Section */}
         <Card style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Subscription</Text>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Subscription</Text>
             <PremiumBadge />
           </View>
-
-          <View style={styles.subscriptionRow}>
-            <View>
-              <Text style={[styles.planName, { color: themeColors.text }]}>
+          <View style={styles.row}>
+            <View style={styles.flex1}>
+              <Text style={[styles.label, { color: colors.text }]}>
                 {isPremium ? 'Premium Plan' : 'Free Plan'}
               </Text>
-              <Text style={[styles.planDescription, { color: themeColors.textSecondary }]}>
-                {isPremium
-                  ? 'You have access to all premium features.'
-                  : 'Upgrade to unlock unlimited AI and more storage.'}
+              <Text style={[styles.caption, { color: colors.textSecondary }]}>
+                {isPremium ? 'All premium features unlocked.' : 'Upgrade for unlimited AI and more.'}
               </Text>
             </View>
-
-            {!isPremium && (
-              <TouchableOpacity
-                style={[styles.upgradeButton, { backgroundColor: themeColors.primary }]}
-                onPress={() => setShowPaywall(true)}
-              >
-                <Text style={[styles.upgradeText, { color: themeColors.onPrimary }]}>Upgrade</Text>
-              </TouchableOpacity>
-            )}
-
-            {isPremium && (
-              <TouchableOpacity onPress={() => setShowPaywall(true)}>
-                <Text style={[styles.manageText, { color: themeColors.primary }]}>Manage</Text>
-              </TouchableOpacity>
-            )}
+            <Button
+              title={isPremium ? 'Manage' : 'Upgrade'}
+              onPress={() => setShowPaywall(true)}
+              variant={isPremium ? 'ghost' : 'primary'}
+              size="sm"
+            />
           </View>
         </Card>
 
-        {/* Appearance & Themes Section */}
         <Card style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>
-            Appearance & Themes
-          </Text>
-
-          {/* Theme Grid */}
-          <View style={styles.themeGrid}>
-            {/* Light and Dark themes first */}
-            {(['light', 'dark'] as const).map(themeName => {
-              const themePreview = themes[themeName];
-              const isSelected = theme === themeName;
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Appearance</Text>
+          <View style={styles.themeList}>
+            {getAvailableThemes().map(t => {
+              const preview = themes[t];
+              const selected = theme === t;
               return (
                 <TouchableOpacity
-                  key={themeName}
+                  key={t}
                   style={[
-                    styles.themeCard,
+                    styles.themeRow,
                     {
-                      backgroundColor: themePreview.surface,
-                      borderColor: isSelected ? themePreview.primary : themePreview.border,
+                      backgroundColor: selected ? colors.primary + '10' : 'transparent',
+                      borderColor: selected ? colors.primary + '30' : colors.border,
                     },
-                    isSelected && styles.themeCardSelected,
                   ]}
-                  onPress={() => setTheme(themeName)}
+                  onPress={() => setTheme(t)}
+                  activeOpacity={0.7}
                 >
-                  <View style={styles.themePreview}>
-                    <View
-                      style={[styles.themeColorDot, { backgroundColor: themePreview.primary }]}
-                    />
-                    <View
-                      style={[styles.themeColorDot, { backgroundColor: themePreview.secondary }]}
-                    />
-                    <View
-                      style={[styles.themeColorDot, { backgroundColor: themePreview.secondary }]}
-                    />
+                  <View style={styles.themeSwatches}>
+                    <View style={[styles.swatch, { backgroundColor: preview.background }]} />
+                    <View style={[styles.swatch, { backgroundColor: preview.primary }]} />
+                    <View style={[styles.swatch, { backgroundColor: preview.surface }]} />
                   </View>
-                  <Text style={[styles.themeName, { color: themePreview.text }]}>
-                    {getThemeDisplayName(themeName)}
-                  </Text>
-                  {isSelected && (
-                    <View style={[styles.selectedBadge, { backgroundColor: themePreview.primary }]}>
-                      <Ionicons name="checkmark" size={16} color={themePreview.onPrimary} />
-                    </View>
-                  )}
+                  <Text style={[styles.themeLabel, { color: colors.text }]}>{getThemeDisplayName(t)}</Text>
+                  {selected && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
                 </TouchableOpacity>
               );
             })}
           </View>
-
-          {/* Separator after Light/Dark */}
-          <View style={[styles.separator, { backgroundColor: themeColors.border }]} />
-
-          {/* Other Color Themes */}
-          <Text style={[styles.subsectionTitle, { color: themeColors.text }]}>Color Themes</Text>
-          <View style={styles.themeGrid}>
-            {getAvailableThemes()
-              .filter(t => t !== 'light' && t !== 'dark')
-              .map(themeName => {
-                const themePreview = themes[themeName];
-                const isSelected = theme === themeName;
-                return (
-                  <TouchableOpacity
-                    key={themeName}
-                    style={[
-                      styles.themeCard,
-                      {
-                        backgroundColor: themePreview.surface,
-                        borderColor: isSelected ? themePreview.primary : themePreview.border,
-                      },
-                      isSelected && styles.themeCardSelected,
-                    ]}
-                    onPress={() => setTheme(themeName)}
-                  >
-                    <View style={styles.themePreview}>
-                      <View
-                        style={[styles.themeColorDot, { backgroundColor: themePreview.primary }]}
-                      />
-                      <View
-                        style={[styles.themeColorDot, { backgroundColor: themePreview.secondary }]}
-                      />
-                      <View
-                        style={[styles.themeColorDot, { backgroundColor: themePreview.secondary }]}
-                      />
-                    </View>
-                    <Text style={[styles.themeName, { color: themePreview.text }]}>
-                      {getThemeDisplayName(themeName)}
-                    </Text>
-                    {isSelected && (
-                      <View
-                        style={[styles.selectedBadge, { backgroundColor: themePreview.primary }]}
-                      >
-                        <Ionicons name="checkmark" size={16} color={themePreview.onPrimary} />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-          </View>
-          <View
-            style={[
-              styles.comingSoonBanner,
-              { backgroundColor: themeColors.surface, borderColor: themeColors.border },
-            ]}
-          >
-            <Ionicons name="sparkles" size={16} color={themeColors.textSecondary} />
-            <Text style={[styles.comingSoonText, { color: themeColors.textSecondary }]}>
-              Custom themes coming soon
-            </Text>
-          </View>
         </Card>
 
-        {/* AI Features Section */}
         <Card style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>AI Features</Text>
-
-          {/* Usage Statistics */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statRow}>
-              <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>
-                Total Requests:
-              </Text>
-              <Text style={[styles.statValue, { color: themeColors.text }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>AI Features</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: colors.text }]}>
                 {preferences?.ai?.requestCount || 0}
               </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Requests</Text>
             </View>
-            <View style={styles.statRow}>
-              <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>
-                Tokens Used:
-              </Text>
-              <Text style={[styles.statValue, { color: themeColors.text }]}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statValue, { color: colors.text }]}>
                 {preferences?.ai?.totalTokensUsed?.toLocaleString() || 0}
               </Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Tokens</Text>
             </View>
-            {preferences?.ai?.lastUsed && (
-              <View style={styles.statRow}>
-                <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>
-                  Last Used:
-                </Text>
-                <Text style={[styles.statValue, { color: themeColors.text }]}>
-                  {new Date(preferences.ai.lastUsed).toLocaleDateString()}
-                </Text>
-              </View>
-            )}
           </View>
-
-          {/* Action Buttons */}
-          <View style={styles.aiButtonsRow}>
-            <TouchableOpacity
-              style={[styles.aiButton, { backgroundColor: themeColors.primary }]}
+          <View style={styles.buttonRow}>
+            <Button
+              title="AI Settings"
+              icon="settings-outline"
               onPress={() => setShowAISettings(true)}
-            >
-              <Ionicons name="settings" size={18} color={themeColors.onPrimary} />
-              <Text style={[styles.aiButtonText, { color: themeColors.onPrimary }]}>
-                AI Settings
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.aiButton,
-                styles.aiButtonSecondary,
-                { borderColor: themeColors.border },
-              ]}
+              variant="secondary"
+              size="sm"
+            />
+            <Button
+              title="Statistics"
+              icon="stats-chart-outline"
               onPress={() => setShowUsageModal(true)}
-            >
-              <Ionicons name="stats-chart" size={18} color={themeColors.text} />
-              <Text style={[styles.aiButtonText, { color: themeColors.text }]}>
-                View Statistics
-              </Text>
-            </TouchableOpacity>
+              variant="secondary"
+              size="sm"
+            />
           </View>
         </Card>
 
-        {/* Storage Method Section */}
         <Card style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Storage Method</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Storage</Text>
           <View style={styles.row}>
-            <View style={styles.storageInfo}>
-              <Ionicons
-                name={storageMethod === 'cloud' ? 'cloud' : 'phone-portrait'}
-                size={24}
-                color={themeColors.textSecondary}
-              />
-              <View style={styles.storageTextContainer}>
-                <Text style={[styles.label, { color: themeColors.text }]}>
-                  {storageMethod === 'cloud' ? 'Cloud Storage' : 'Local Storage'}
-                </Text>
-                <Text style={[styles.bodyText, { color: themeColors.textSecondary }]}>
-                  {storageMethod === 'cloud'
-                    ? 'Data synced to our database'
-                    : 'Data stored on device'}
-                </Text>
-              </View>
+            <Ionicons
+              name={storageMethod === 'cloud' ? 'cloud-outline' : 'phone-portrait-outline'}
+              size={20}
+              color={colors.textSecondary}
+            />
+            <View style={styles.flex1}>
+              <Text style={[styles.label, { color: colors.text }]}>
+                {storageMethod === 'cloud' ? 'Cloud Storage' : 'Local Storage'}
+              </Text>
+              <Text style={[styles.caption, { color: colors.textSecondary }]}>
+                {storageMethod === 'cloud' ? 'Synced to database' : 'Stored on device'}
+              </Text>
             </View>
           </View>
           {switching ? (
-            <View style={styles.row}>
-              <Text style={{ color: themeColors.text }}>Switching...</Text>
-              <ActivityIndicator color={themeColors.primary} />
-            </View>
+            <ActivityIndicator color={colors.primary} style={styles.spinner} />
           ) : (
             <Button
-              title={`Switch to ${storageMethod === 'cloud' ? 'Local' : 'Cloud'} Storage`}
+              title={`Switch to ${storageMethod === 'cloud' ? 'Local' : 'Cloud'}`}
               onPress={handleSwitchStorage}
-              variant="secondary"
-              style={styles.swichButton}
+              variant="outline"
+              size="sm"
+              style={styles.storageButton}
             />
           )}
 
-          <View style={[styles.divider, { backgroundColor: themeColors.border }]} />
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          <Text style={[styles.label, { color: themeColors.On, marginBottom: spacing.sm }]}>
-            Delete Behavior
-          </Text>
           <View style={styles.row}>
-            <Text style={[styles.bodyText, { color: themeColors.textSecondary }, styles.flex1]}>
-              {preferences?.storage?.deleteMode === 'hard'
-                ? 'Permanently delete items'
-                : 'Archive items (Soft Delete)'}
-            </Text>
+            <View style={styles.flex1}>
+              <Text style={[styles.label, { color: colors.text }]}>Soft Delete</Text>
+              <Text style={[styles.caption, { color: colors.textSecondary }]}>
+                Archive instead of permanently deleting
+              </Text>
+            </View>
             <Switch
               value={preferences?.storage?.deleteMode !== 'hard'}
               onValueChange={value =>
@@ -413,54 +259,39 @@ export function SettingsScreen() {
                   storage: { ...preferences?.storage, deleteMode: value ? 'soft' : 'hard' },
                 })
               }
-              trackColor={{ false: themeColors.border, true: themeColors.textSecondary }}
-              thumbColor={themeColors.primary}
+              trackColor={{ false: colors.border, true: colors.primary }}
+              thumbColor="#FFFFFF"
             />
           </View>
         </Card>
 
-        {/* Data Storage Location (only for local) */}
         {storageMethod === 'local' && (
           <Card style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Storage Location</Text>
-            <Text style={[styles.bodyText, { color: themeColors.textSecondary }]}>
-              Current Location:
-            </Text>
-            <Text style={[styles.pathText, styles.pathTextMargin, { color: themeColors.text }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Storage Location</Text>
+            <Text style={[styles.caption, { color: colors.textSecondary }]}>
               {storagePath ? decodeURIComponent(storagePath) : 'Internal App Storage'}
             </Text>
-
             {migrating ? (
-              <View style={styles.migratingContainer}>
-                <ActivityIndicator color={themeColors.primary} />
-                <Text style={[styles.migratingText, { color: themeColors.text }]}>
-                  Moving data...
-                </Text>
-              </View>
+              <ActivityIndicator color={colors.primary} style={styles.spinner} />
             ) : (
               <Button
                 title="Change Location"
                 onPress={handleSelectStorage}
                 variant="outline"
-                style={{ marginTop: spacing.md }}
+                size="sm"
+                style={styles.storageButton}
               />
             )}
           </Card>
         )}
 
-        {/* About Section */}
         <Card style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>About</Text>
-          <Text style={[styles.bodyText, { color: themeColors.textSecondary }]}>Version 1.0.0</Text>
-          <Text
-            style={[styles.bodyText, { color: themeColors.textSecondary, marginTop: spacing.xs }]}
-          >
-            Made with ❤️ by Bluejutzu
-          </Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>About</Text>
+          <Text style={[styles.caption, { color: colors.textSecondary }]}>Version 1.0.0</Text>
+          <Text style={[styles.caption, { color: colors.textSecondary }]}>Made by Bluejutzu</Text>
         </Card>
       </ScrollView>
 
-      {/* Modals */}
       <AISettingsModal visible={showAISettings} onClose={() => setShowAISettings(false)} />
       <AIUsageModal visible={showUsageModal} onClose={() => setShowUsageModal(false)} />
       <PaywallModal visible={showPaywall} onClose={() => setShowPaywall(false)} />
@@ -477,200 +308,95 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   title: {
-    ...typography.h1,
+    fontSize: 28,
+    fontWeight: '700',
     marginBottom: spacing.lg,
   },
   section: {
-    marginBottom: spacing.lg,
-    padding: spacing.lg,
+    marginBottom: spacing.md,
+    padding: spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   sectionTitle: {
-    ...typography.h3,
-    marginBottom: spacing.md,
-  },
-  subsectionTitle: {
-    ...typography.h3,
     fontSize: 16,
+    fontWeight: '600',
     marginBottom: spacing.sm,
-    marginTop: spacing.sm,
   },
-  subscriptionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  planName: {
-    ...typography.h3,
-    marginBottom: 4,
-  },
-  planDescription: {
-    ...typography.caption,
-    maxWidth: 200,
-  },
-  upgradeButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 16,
-  },
-  upgradeText: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-  },
-  manageText: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-  },
-  themeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  themeCard: {
-    width: '47%',
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-    position: 'relative',
-  },
-  themeCardSelected: {
-    borderWidth: 2,
-  },
-  themePreview: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 8,
-  },
-  themeColorDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-  },
-  themeName: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-  },
-  selectedBadge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  comingSoonBanner: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
+  },
+  flex1: {
+    flex: 1,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  caption: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  themeList: {
     gap: 8,
-    marginTop: spacing.md,
-    padding: 12,
-    borderRadius: 8,
+  },
+  themeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 10,
+    borderRadius: 10,
     borderWidth: 1,
   },
-  comingSoonText: {
-    ...typography.bodySmall,
-    fontSize: 13,
+  themeSwatches: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  swatch: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+  },
+  themeLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  statItem: {
+    flex: 1,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
   },
   divider: {
     height: 1,
     marginVertical: spacing.md,
   },
-  flex1: {
-    flex: 1,
-  },
-  swichButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  separator: {
-    height: 1,
-    marginVertical: spacing.md,
-  },
-  statsContainer: {
-    marginBottom: spacing.md,
-  },
-  statRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  statLabel: {
-    ...typography.bodySmall,
-  },
-  statValue: {
-    ...typography.body,
-    fontWeight: '600',
-  },
-  aiButtonsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  aiButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
-  },
-  aiButtonSecondary: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-  },
-  aiButtonText: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  storageInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flex: 1,
-  },
-  storageTextContainer: {
-    flex: 1,
-  },
-  label: {
-    ...typography.bodySmall,
-    fontWeight: '600',
-  },
-  bodyText: {
-    ...typography.bodySmall,
-    marginBottom: spacing.xs,
-  },
-  pathText: {
-    ...typography.caption,
-  },
-  pathTextMargin: {
-    marginBottom: 12,
-  },
-  migratingContainer: {
-    marginTop: spacing.md,
-  },
-  migratingText: {
-    color: '#666', // Will be overridden by theme color in render
-    textAlign: 'center',
+  spinner: {
     marginTop: spacing.sm,
+  },
+  storageButton: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
   },
 });
