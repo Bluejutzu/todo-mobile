@@ -56,6 +56,7 @@ export interface AIResponse<T = any> {
   result?: T;
   error?: string;
   tokensUsed?: number;
+  rateLimited?: boolean;
 }
 
 export interface CategorySuggestion {

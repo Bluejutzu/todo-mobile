@@ -101,11 +101,21 @@ class AIService {
         };
       }
     } catch (error: any) {
+      const status = error.response?.status;
       logger.error('[AI Service] Request error:', {
         message: error.message,
         response: error.response?.data,
-        status: error.response?.status,
+        status,
       });
+
+      if (status === 429) {
+        return {
+          success: false,
+          error: 'Rate limited by the AI provider. Wait a moment then try again, or switch to a different model in AI Settings.',
+          rateLimited: true,
+        };
+      }
+
       return {
         success: false,
         error: error.response?.data?.error?.message || error.message || 'AI request failed',

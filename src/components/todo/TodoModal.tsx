@@ -154,24 +154,26 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
     let totalTokens = 0;
     let requestsMade = 0;
 
+    const stopProcessing = () => {
+      setIsAIProcessing(false);
+      setAiMessage('');
+    };
+
     try {
       const currentTodo = { title, description, category, priority, dueDate };
 
+      const aiConfig = {
+        userApiKey: preferences?.ai?.openRouterKey,
+        model: preferences?.ai?.model,
+      };
+
       if (preferences?.ai?.todoImprovement) {
         setAiMessage('Enhancing title and description...');
-        const result = await aiService.improveTodo(currentTodo, todos, {
-          userApiKey: preferences?.ai?.openRouterKey,
-          model: preferences?.ai?.model,
-        });
+        const result = await aiService.improveTodo(currentTodo, todos, aiConfig);
+        if (result.rateLimited) { setAiError(result.error!); stopProcessing(); return; }
         if (result.success && isTodoImprovement(result.result)) {
-          if (result.result.title) {
-            setTitle(result.result.title);
-            markAIField('title');
-          }
-          if (result.result.description) {
-            setDescription(result.result.description);
-            markAIField('description');
-          }
+          if (result.result.title) { setTitle(result.result.title); markAIField('title'); }
+          if (result.result.description) { setDescription(result.result.description); markAIField('description'); }
           if (result.tokensUsed) totalTokens += result.tokensUsed;
           requestsMade++;
         } else if (!result.success) {
@@ -181,10 +183,8 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
 
       if (preferences?.ai?.autoCategory && !category) {
         setAiMessage('Suggesting category...');
-        const result = await aiService.suggestCategory(currentTodo, todos, {
-          userApiKey: preferences?.ai?.openRouterKey,
-          model: preferences?.ai?.model,
-        });
+        const result = await aiService.suggestCategory(currentTodo, todos, aiConfig);
+        if (result.rateLimited) { setAiError(result.error!); stopProcessing(); return; }
         if (result.success && isCategorySuggestion(result.result)) {
           setCategory(result.result.category);
           markAIField('category');
@@ -197,10 +197,8 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
 
       if (preferences?.ai?.prioritySuggestion) {
         setAiMessage('Analyzing priority...');
-        const result = await aiService.suggestPriority(currentTodo, todos, {
-          userApiKey: preferences?.ai?.openRouterKey,
-          model: preferences?.ai?.model,
-        });
+        const result = await aiService.suggestPriority(currentTodo, todos, aiConfig);
+        if (result.rateLimited) { setAiError(result.error!); stopProcessing(); return; }
         if (result.success && isPrioritySuggestion(result.result)) {
           setPriority(result.result.priority);
           markAIField('priority');
@@ -230,8 +228,7 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
     } catch (error) {
       console.error('AI improvement error:', error);
       setAiError('Failed to improve todo with AI.');
-      setIsAIProcessing(false);
-      setAiMessage('');
+      stopProcessing();
     }
   };
 
