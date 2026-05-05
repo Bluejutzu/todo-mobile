@@ -48,7 +48,10 @@ export function NameScreen() {
 
         <View style={styles.inputContainer}>
           <TextInput
-            style={[styles.input, { color: colors.text, backgroundColor: colors.input, borderColor: colors.border }]}
+            style={[
+              styles.input,
+              { color: colors.text, backgroundColor: colors.input, borderColor: colors.border },
+            ]}
             placeholder="Your Name"
             placeholderTextColor={colors.textSecondary}
             value={name}
@@ -65,7 +68,12 @@ export function NameScreen() {
           disabled={!canProceed}
           activeOpacity={0.7}
         >
-          <Text style={[styles.buttonText, { color: canProceed ? colors.onPrimary : colors.textSecondary }]}>
+          <Text
+            style={[
+              styles.buttonText,
+              { color: canProceed ? colors.onPrimary : colors.textSecondary },
+            ]}
+          >
             Next
           </Text>
         </TouchableOpacity>

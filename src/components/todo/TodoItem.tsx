@@ -5,7 +5,6 @@ import { Card } from '../common/Card';
 import { useUserStore } from '../../stores/userStore';
 import { getThemeColors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 import type { Todo } from '../../types/todo';
 
 interface TodoItemProps {
@@ -23,7 +22,14 @@ const PRIORITY_COLORS: Record<string, string> = {
   low: '#10b981',
 };
 
-export function TodoItem({ todo, onPress, onToggle, onLongPress, selectionMode, isSelected }: TodoItemProps) {
+export function TodoItem({
+  todo,
+  onPress,
+  onToggle,
+  onLongPress,
+  selectionMode,
+  isSelected,
+}: TodoItemProps) {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const colors = getThemeColors(theme);
   const priorityColor = PRIORITY_COLORS[todo.priority || 'medium'] || colors.textSecondary;
@@ -41,10 +47,11 @@ export function TodoItem({ todo, onPress, onToggle, onLongPress, selectionMode, 
       <Card
         style={[
           styles.card,
-          isSelected && selectionMode && {
-            backgroundColor: colors.primary + '12',
-            borderColor: colors.primary,
-          },
+          isSelected &&
+            selectionMode && {
+              backgroundColor: colors.primary + '12',
+              borderColor: colors.primary,
+            },
         ]}
       >
         <View style={styles.row}>

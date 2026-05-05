@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../../stores/userStore';
-import { getThemeColors, isDarkTheme } from '../../theme/colors';
+import { getThemeColors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
@@ -14,7 +14,6 @@ interface AILoadingIndicatorProps {
 export function AILoadingIndicator({ message = 'AI is thinking...' }: AILoadingIndicatorProps) {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const colors = getThemeColors(theme);
-  const dark = isDarkTheme(theme);
 
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(0.6)).current;
@@ -48,7 +47,10 @@ export function AILoadingIndicator({ message = 'AI is thinking...' }: AILoadingI
 
     shimmer.start();
     pulse.start();
-    return () => { shimmer.stop(); pulse.stop(); };
+    return () => {
+      shimmer.stop();
+      pulse.stop();
+    };
   }, [shimmerAnim, pulseAnim]);
 
   const translateX = shimmerAnim.interpolate({
@@ -57,7 +59,12 @@ export function AILoadingIndicator({ message = 'AI is thinking...' }: AILoadingI
   });
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.primary + '10', borderColor: colors.primary + '25' }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.primary + '10', borderColor: colors.primary + '25' },
+      ]}
+    >
       <View style={styles.row}>
         <Animated.View style={{ opacity: pulseAnim }}>
           <Ionicons name="sparkles" size={16} color={colors.primary} />

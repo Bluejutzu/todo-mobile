@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   Animated,
   Easing,
 } from 'react-native';
@@ -25,6 +24,11 @@ import type { Todo, TodoPriority } from '../../types/todo';
 import type { AIConfig } from '../../types/ai';
 import { aiService } from '../../services/ai';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  isCategorySuggestion,
+  isPrioritySuggestion,
+  isTodoImprovement,
+} from '../../services/ai/aiResultSchemas';
 
 interface TodoModalProps {
   visible: boolean;
@@ -39,27 +43,48 @@ const PRIORITIES: { value: TodoPriority; label: string; color: string }[] = [
   { value: 'high', label: 'High', color: '#ef4444' },
 ];
 
-function AIHighlight({ active, colors, children }: { active: boolean; colors: any; children: React.ReactNode }) {
+function AIHighlight({
+  active,
+  colors,
+  children,
+}: {
+  active: boolean;
+  colors: any;
+  children: React.ReactNode;
+}) {
   const anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (active) {
       Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 300, easing: Easing.out(Easing.ease), useNativeDriver: false }),
+        Animated.timing(anim, {
+          toValue: 1,
+          duration: 300,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: false,
+        }),
         Animated.delay(1200),
-        Animated.timing(anim, { toValue: 0, duration: 500, easing: Easing.in(Easing.ease), useNativeDriver: false }),
+        Animated.timing(anim, {
+          toValue: 0,
+          duration: 500,
+          easing: Easing.in(Easing.ease),
+          useNativeDriver: false,
+        }),
       ]).start();
     }
   }, [active, anim]);
 
-  const bg = anim.interpolate({ inputRange: [0, 1], outputRange: ['transparent', colors.primary + '15'] });
-  const borderColor = anim.interpolate({ inputRange: [0, 1], outputRange: ['transparent', colors.primary + '40'] });
+  const bg = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['transparent', colors.primary + '15'],
+  });
+  const borderColor = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['transparent', colors.primary + '40'],
+  });
+  const animatedStyle = { backgroundColor: bg, borderColor };
 
-  return (
-    <Animated.View style={{ backgroundColor: bg, borderColor, borderWidth: 1, borderRadius: borderRadius.sm, margin: -4, padding: 4 }}>
-      {children}
-    </Animated.View>
-  );
+  return <Animated.View style={[styles.aiHighlight, animatedStyle]}>{children}</Animated.View>;
 }
 
 export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
@@ -78,6 +103,8 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
 
   const [isAIProcessing, setIsAIProcessing] = useState(false);
   const [aiMessage, setAiMessage] = useState('');
+  const [aiError, setAiError] = useState('');
+  const [titleError, setTitleError] = useState('');
   const [aiUpdatedFields, setAiUpdatedFields] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -98,6 +125,8 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
     }
     setIsAIProcessing(false);
     setAiMessage('');
+    setAiError('');
+    setTitleError('');
     setAiUpdatedFields(new Set());
   }, [todo, visible]);
 
@@ -114,12 +143,13 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
 
   const handleImproveWithAI = async () => {
     if (!title.trim()) {
-      Alert.alert('Error', 'Please enter a title first');
+      setTitleError('Title is required before using AI.');
       return;
     }
 
     setIsAIProcessing(true);
     setAiMessage('Improving todo with AI...');
+    setAiError('');
 
     let totalTokens = 0;
     let requestsMade = 0;
@@ -133,11 +163,19 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
           userApiKey: preferences?.ai?.openRouterKey,
           model: preferences?.ai?.model,
         });
-        if (result.success && result.result) {
-          if (result.result.title) { setTitle(result.result.title); markAIField('title'); }
-          if (result.result.description) { setDescription(result.result.description); markAIField('description'); }
+        if (result.success && isTodoImprovement(result.result)) {
+          if (result.result.title) {
+            setTitle(result.result.title);
+            markAIField('title');
+          }
+          if (result.result.description) {
+            setDescription(result.result.description);
+            markAIField('description');
+          }
           if (result.tokensUsed) totalTokens += result.tokensUsed;
           requestsMade++;
+        } else if (!result.success) {
+          setAiError(result.error || 'AI could not improve this todo.');
         }
       }
 
@@ -147,11 +185,13 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
           userApiKey: preferences?.ai?.openRouterKey,
           model: preferences?.ai?.model,
         });
-        if (result.success && result.result) {
+        if (result.success && isCategorySuggestion(result.result)) {
           setCategory(result.result.category);
           markAIField('category');
           if (result.tokensUsed) totalTokens += result.tokensUsed;
           requestsMade++;
+        } else if (!result.success) {
+          setAiError(result.error || 'AI could not suggest a category.');
         }
       }
 
@@ -161,11 +201,13 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
           userApiKey: preferences?.ai?.openRouterKey,
           model: preferences?.ai?.model,
         });
-        if (result.success && result.result) {
+        if (result.success && isPrioritySuggestion(result.result)) {
           setPriority(result.result.priority);
           markAIField('priority');
           if (result.tokensUsed) totalTokens += result.tokensUsed;
           requestsMade++;
+        } else if (!result.success) {
+          setAiError(result.error || 'AI could not suggest a priority.');
         }
       }
 
@@ -181,17 +223,23 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
       }
 
       setAiMessage('Done!');
-      setTimeout(() => { setIsAIProcessing(false); setAiMessage(''); }, 1000);
+      setTimeout(() => {
+        setIsAIProcessing(false);
+        setAiMessage('');
+      }, 1000);
     } catch (error) {
       console.error('AI improvement error:', error);
-      Alert.alert('Error', 'Failed to improve todo with AI');
+      setAiError('Failed to improve todo with AI.');
       setIsAIProcessing(false);
       setAiMessage('');
     }
   };
 
   const handleSave = () => {
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      setTitleError('Title is required.');
+      return;
+    }
     onSave({
       title: title.trim(),
       description: description.trim() || undefined,
@@ -204,8 +252,16 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        edges={['top']}
+      >
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.headerButton}>
             <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
@@ -214,20 +270,42 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
             {todo ? 'Edit Todo' : 'New Todo'}
           </Text>
           <TouchableOpacity onPress={handleSave} style={styles.headerButton}>
-            <Text style={[styles.saveText, { color: title.trim() ? colors.primary : colors.textSecondary }]}>
+            <Text
+              style={[
+                styles.saveText,
+                { color: title.trim() ? colors.primary : colors.textSecondary },
+              ]}
+            >
               Save
             </Text>
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          keyboardShouldPersistTaps="handled"
+        >
           <AIHighlight active={aiUpdatedFields.has('title')} colors={colors}>
-            <Input label="Title" value={title} onChangeText={setTitle} placeholder="What needs to be done?" autoFocus />
+            <Input
+              label="Title"
+              value={title}
+              onChangeText={value => {
+                setTitle(value);
+                if (value.trim()) setTitleError('');
+              }}
+              placeholder="What needs to be done?"
+              error={titleError}
+              autoFocus
+            />
           </AIHighlight>
 
           {preferences?.ai?.enabled && (
             <TouchableOpacity
-              style={[styles.aiButton, { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' }]}
+              style={[
+                styles.aiButton,
+                { backgroundColor: colors.primary + '12', borderColor: colors.primary + '30' },
+              ]}
               onPress={handleImproveWithAI}
               disabled={isAIProcessing || !title.trim()}
               activeOpacity={0.7}
@@ -238,12 +316,18 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
           )}
 
           {isAIProcessing && <AILoadingIndicator message={aiMessage} />}
+          {aiError ? (
+            <Text style={[styles.errorText, { color: colors.error }]}>{aiError}</Text>
+          ) : null}
 
           <AIHighlight active={aiUpdatedFields.has('description')} colors={colors}>
             <View style={styles.field}>
               <Text style={[styles.label, { color: colors.text }]}>Description</Text>
               <TextInput
-                style={[styles.textarea, { backgroundColor: colors.input, borderColor: colors.border, color: colors.text }]}
+                style={[
+                  styles.textarea,
+                  { backgroundColor: colors.input, borderColor: colors.border, color: colors.text },
+                ]}
                 value={description}
                 onChangeText={setDescription}
                 placeholder="Add details..."
@@ -259,32 +343,43 @@ export function TodoModal({ visible, todo, onClose, onSave }: TodoModalProps) {
             <View style={styles.field}>
               <Text style={[styles.label, { color: colors.text }]}>Priority</Text>
               <View style={styles.priorityContainer}>
-                {PRIORITIES.map(p => (
-                  <TouchableOpacity
-                    key={p.value}
-                    style={[
-                      styles.priorityButton,
-                      {
-                        backgroundColor: priority === p.value ? p.color : colors.input,
-                        borderColor: priority === p.value ? p.color : colors.border,
-                      },
-                    ]}
-                    onPress={() => setPriority(p.value)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.priorityText, { color: priority === p.value ? '#fff' : colors.text }]}>
-                      {p.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {PRIORITIES.map(p => {
+                  const selected = priority === p.value;
+                  const priorityButtonStyle = {
+                    backgroundColor: selected ? p.color : colors.input,
+                    borderColor: selected ? p.color : colors.border,
+                  };
+                  const priorityTextStyle = { color: selected ? '#fff' : colors.text };
+
+                  return (
+                    <TouchableOpacity
+                      key={p.value}
+                      style={[styles.priorityButton, priorityButtonStyle]}
+                      onPress={() => setPriority(p.value)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.priorityText, priorityTextStyle]}>{p.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           </AIHighlight>
 
-          <DatePicker label="Due Date" value={dueDate} onChange={setDueDate} placeholder="No due date" />
+          <DatePicker
+            label="Due Date"
+            value={dueDate}
+            onChange={setDueDate}
+            placeholder="No due date"
+          />
 
           <AIHighlight active={aiUpdatedFields.has('category')} colors={colors}>
-            <Input label="Category" value={category} onChangeText={setCategory} placeholder="e.g., Work, Personal, Shopping" />
+            <Input
+              label="Category"
+              value={category}
+              onChangeText={setCategory}
+              placeholder="e.g., Work, Personal, Shopping"
+            />
           </AIHighlight>
 
           <ColorPicker label="Color" value={color} onChange={setColor} />
@@ -373,6 +468,16 @@ const styles = StyleSheet.create({
   },
   aiButtonText: {
     ...typography.bodySmall,
+    fontWeight: '600',
+  },
+  aiHighlight: {
+    borderWidth: 1,
+    borderRadius: borderRadius.sm,
+    margin: -4,
+    padding: 4,
+  },
+  errorText: {
+    ...typography.caption,
     fontWeight: '600',
   },
 });

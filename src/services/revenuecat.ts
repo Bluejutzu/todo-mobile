@@ -7,8 +7,7 @@ import Purchases, {
 import { Platform } from 'react-native';
 import { REVENUECAT_ENTITLEMENTS } from '../types/subscription';
 
-// Mock Mode Configuration
-const MOCK_MODE = true;
+const MOCK_MODE = process.env.EXPO_PUBLIC_REVENUECAT_MOCK_MODE !== 'false';
 
 // Mock State - tracks if user has purchased premium in mock mode
 let mockHasPremium = false;
@@ -131,6 +130,10 @@ const MOCK_CUSTOMER_INFO_FREE: CustomerInfo = {
 } as any;
 
 export const revenueCatService = {
+  isMockMode() {
+    return MOCK_MODE;
+  },
+
   async initialize(userId?: string) {
     if (MOCK_MODE) {
       console.log('RevenueCat initialized in MOCK MODE');

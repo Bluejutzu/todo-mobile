@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator';
@@ -21,14 +21,21 @@ export function AppNavigator() {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const themeColors = getThemeColors(theme);
 
-  // Added for Clerk authentication and Cloud Storage
   const { setTokenGetter } = useTodoStore();
   const { getToken, isSignedIn } = useAuth();
 
-  // Initialize token getter for Cloud Storage
+  // Keep a stable ref to getToken so setTokenGetter is only called once.
+  // Clerk recreates getToken on each render; storing it in a ref avoids
+  // re-registering the token getter on every render which caused an
+  // infinite update loop via syncStatusStore.subscribe.
+  const getTokenRef = useRef(getToken);
   useEffect(() => {
-    setTokenGetter(getToken);
-  }, []); // Only run once on mount
+    getTokenRef.current = getToken;
+  }, [getToken]);
+
+  useEffect(() => {
+    setTokenGetter((...args) => getTokenRef.current(...args));
+  }, [setTokenGetter]);
 
   useEffect(() => {
     async function initialize() {
@@ -41,7 +48,7 @@ export function AppNavigator() {
       setLoading(false);
     }
     initialize();
-  }, [isSignedIn]);
+  }, [isSignedIn, loadPreferences]);
 
   if (loading) {
     return (

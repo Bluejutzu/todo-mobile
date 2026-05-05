@@ -12,7 +12,13 @@ import { storage } from '../../services/storage';
 type NavigationProp = NativeStackNavigationProp<OnboardingStackParamList, 'StorageSelection'>;
 type StorageOption = 'cloud' | 'local';
 
-const OPTIONS: { id: StorageOption; title: string; description: string; icon: 'cloud-outline' | 'phone-portrait-outline'; badge?: string }[] = [
+const OPTIONS: {
+  id: StorageOption;
+  title: string;
+  description: string;
+  icon: 'cloud-outline' | 'phone-portrait-outline';
+  badge?: string;
+}[] = [
   {
     id: 'cloud',
     title: 'Cloud Storage',
@@ -52,17 +58,15 @@ export function StorageSelectionScreen() {
         <View style={styles.options}>
           {OPTIONS.map(option => {
             const isSelected = selected === option.id;
+            const optionStyle = {
+              backgroundColor: colors.surface,
+              borderColor: isSelected ? colors.primary : colors.border,
+              borderWidth: isSelected ? 2 : 1,
+            };
             return (
               <TouchableOpacity
                 key={option.id}
-                style={[
-                  styles.option,
-                  {
-                    backgroundColor: colors.surface,
-                    borderColor: isSelected ? colors.primary : colors.border,
-                    borderWidth: isSelected ? 2 : 1,
-                  },
-                ]}
+                style={[styles.option, optionStyle]}
                 onPress={() => setSelected(option.id)}
                 activeOpacity={0.7}
               >
@@ -74,15 +78,26 @@ export function StorageSelectionScreen() {
                   />
                   {option.badge && (
                     <View style={[styles.badge, { backgroundColor: colors.primary + '18' }]}>
-                      <Text style={[styles.badgeText, { color: colors.primary }]}>{option.badge}</Text>
+                      <Text style={[styles.badgeText, { color: colors.primary }]}>
+                        {option.badge}
+                      </Text>
                     </View>
                   )}
                 </View>
                 <Text style={[styles.optionTitle, { color: colors.text }]}>{option.title}</Text>
-                <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>{option.description}</Text>
+                <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>
+                  {option.description}
+                </Text>
                 <View style={styles.radioRow}>
-                  <View style={[styles.radio, { borderColor: isSelected ? colors.primary : colors.border }]}>
-                    {isSelected && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}
+                  <View
+                    style={[
+                      styles.radio,
+                      { borderColor: isSelected ? colors.primary : colors.border },
+                    ]}
+                  >
+                    {isSelected && (
+                      <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />
+                    )}
                   </View>
                 </View>
               </TouchableOpacity>

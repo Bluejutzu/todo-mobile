@@ -14,9 +14,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '../../components/common/Card';
 import { Button } from '../../components/common/Button';
 import { useUserStore } from '../../stores/userStore';
-import { getThemeColors, getAvailableThemes, getThemeDisplayName, themes, ThemeName } from '../../theme/colors';
+import {
+  getThemeColors,
+  getAvailableThemes,
+  getThemeDisplayName,
+  themes,
+} from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
-import { typography } from '../../theme/typography';
 import { storage } from '../../services/storage';
 import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
@@ -51,7 +55,10 @@ export function SettingsScreen() {
 
   const handleSelectStorage = async () => {
     if (Platform.OS !== 'android') {
-      Alert.alert('Not Supported', 'Changing storage location is currently only supported on Android.');
+      Alert.alert(
+        'Not Supported',
+        'Changing storage location is currently only supported on Android.'
+      );
       return;
     }
     try {
@@ -93,7 +100,10 @@ export function SettingsScreen() {
     const { canMigrate, sizeFormatted } = await storage.canMigrateData();
 
     if (!canMigrate) {
-      Alert.alert('Data Too Large', `Your data (${sizeFormatted}) exceeds the limit for cloud storage.`);
+      Alert.alert(
+        'Data Too Large',
+        `Your data (${sizeFormatted}) exceeds the limit for cloud storage.`
+      );
       return;
     }
 
@@ -136,7 +146,9 @@ export function SettingsScreen() {
                 {isPremium ? 'Premium Plan' : 'Free Plan'}
               </Text>
               <Text style={[styles.caption, { color: colors.textSecondary }]}>
-                {isPremium ? 'All premium features unlocked.' : 'Upgrade for unlimited AI and more.'}
+                {isPremium
+                  ? 'All premium features unlocked.'
+                  : 'Upgrade for unlimited AI and more.'}
               </Text>
             </View>
             <Button
@@ -154,16 +166,14 @@ export function SettingsScreen() {
             {getAvailableThemes().map(t => {
               const preview = themes[t];
               const selected = theme === t;
+              const themeRowStyle = {
+                backgroundColor: selected ? colors.primary + '10' : 'transparent',
+                borderColor: selected ? colors.primary + '30' : colors.border,
+              };
               return (
                 <TouchableOpacity
                   key={t}
-                  style={[
-                    styles.themeRow,
-                    {
-                      backgroundColor: selected ? colors.primary + '10' : 'transparent',
-                      borderColor: selected ? colors.primary + '30' : colors.border,
-                    },
-                  ]}
+                  style={[styles.themeRow, themeRowStyle]}
                   onPress={() => setTheme(t)}
                   activeOpacity={0.7}
                 >
@@ -172,8 +182,12 @@ export function SettingsScreen() {
                     <View style={[styles.swatch, { backgroundColor: preview.primary }]} />
                     <View style={[styles.swatch, { backgroundColor: preview.surface }]} />
                   </View>
-                  <Text style={[styles.themeLabel, { color: colors.text }]}>{getThemeDisplayName(t)}</Text>
-                  {selected && <Ionicons name="checkmark-circle" size={20} color={colors.primary} />}
+                  <Text style={[styles.themeLabel, { color: colors.text }]}>
+                    {getThemeDisplayName(t)}
+                  </Text>
+                  {selected && (
+                    <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
+                  )}
                 </TouchableOpacity>
               );
             })}

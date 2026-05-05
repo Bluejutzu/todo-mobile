@@ -13,6 +13,7 @@ export function CalendarScreen() {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const colors = getThemeColors(theme);
   const todos = useTodoStore(state => state.todos);
+  const updateTodo = useTodoStore(state => state.updateTodo);
 
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [syncing, setSyncing] = useState(false);
@@ -22,7 +23,7 @@ export function CalendarScreen() {
     const marked: any = {};
 
     todos.forEach(todo => {
-      if (todo.dueDate) {
+      if (todo.dueDate && !todo.deletedAt) {
         const dateStr = new Date(todo.dueDate).toISOString().split('T')[0];
         if (!marked[dateStr]) {
           marked[dateStr] = {
@@ -86,20 +87,21 @@ export function CalendarScreen() {
         return;
       }
 
-      // Sync todos with due dates
+      // Sync active todos with due dates. Existing synced items are skipped to avoid duplicates.
       let syncedCount = 0;
       for (const todo of todos) {
-        if (todo.dueDate && !todo.completed) {
+        if (todo.dueDate && !todo.completed && !todo.deletedAt && !todo.externalCalendarEventId) {
           const startDate = new Date(todo.dueDate);
           const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hour duration
 
-          await ExpoCalendar.createEventAsync(defaultCalendar.id, {
+          const eventId = await ExpoCalendar.createEventAsync(defaultCalendar.id, {
             title: todo.title,
             notes: todo.description,
             startDate,
             endDate,
             timeZone: 'UTC',
           });
+          await updateTodo(todo.id, { externalCalendarEventId: eventId });
           syncedCount++;
         }
       }

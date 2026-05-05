@@ -94,6 +94,7 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
     { icon: 'cloud-upload', text: '50MB Cloud Storage' },
     { icon: 'star', text: 'Priority Support' },
   ];
+  const mockMode = revenueCatService.isMockMode();
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
@@ -111,7 +112,9 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
             </View>
             <Text style={[styles.title, { color: themeColors.text }]}>Unlock Premium</Text>
             <Text style={[styles.subtitle, { color: themeColors.textSecondary }]}>
-              Supercharge your productivity with advanced AI features
+              {mockMode
+                ? 'Preview premium features in mock purchase mode'
+                : 'Supercharge your productivity with advanced AI features'}
             </Text>
           </View>
 
@@ -129,6 +132,10 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
           <View style={styles.packagesContainer}>
             {loading ? (
               <ActivityIndicator size="large" color={themeColors.primary} />
+            ) : packages.length === 0 ? (
+              <Text style={[styles.emptyOfferings, { color: themeColors.textSecondary }]}>
+                No subscription packages are available right now.
+              </Text>
             ) : (
               packages.map(pack => {
                 const isSelected = selectedPackage === pack.identifier;
@@ -177,7 +184,7 @@ export function PaywallModal({ visible, onClose }: PaywallModalProps) {
           <TouchableOpacity
             style={[styles.purchaseButton, { backgroundColor: themeColors.primary }]}
             onPress={handlePurchase}
-            disabled={purchasing !== null || loading}
+            disabled={purchasing !== null || loading || packages.length === 0}
           >
             {purchasing ? (
               <ActivityIndicator color="#fff" />
@@ -285,6 +292,11 @@ const styles = StyleSheet.create({
   },
   period: {
     ...typography.caption,
+  },
+  emptyOfferings: {
+    ...typography.bodySmall,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
   },
   footer: {
     padding: spacing.lg,

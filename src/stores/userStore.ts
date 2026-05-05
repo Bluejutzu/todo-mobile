@@ -2,13 +2,7 @@ import { create } from 'zustand';
 import type { UserPreferences } from '../types/user';
 import { storage } from '../services/storage';
 import type { ThemeName } from '../theme/colors';
-
-const VALID_THEMES: ThemeName[] = ['light', 'dark', 'oled'];
-
-function normalizeTheme(theme: string | undefined): ThemeName {
-  if (theme && VALID_THEMES.includes(theme as ThemeName)) return theme as ThemeName;
-  return 'dark';
-}
+import { defaultPreferences, normalizePreferences } from '../domain/preferences/defaultPreferences';
 
 interface UserStore {
   preferences: UserPreferences | null;
@@ -21,51 +15,19 @@ interface UserStore {
   setUserName: (name: string) => Promise<void>;
 }
 
-const defaultPreferences: UserPreferences = {
-  name: '',
-  theme: 'dark',
-  onboardingCompleted: false,
-  notificationsEnabled: false,
-  ai: {
-    provider: 'openrouter',
-    model: 'meta-llama/llama-3.3-70b-instruct:free',
-    enabled: false,
-    requestCount: 0,
-    totalTokensUsed: 0,
-    autoCategory: true,
-    todoImprovement: true,
-    prioritySuggestion: true,
-    dueDateSuggestion: false,
-    subtaskGeneration: true,
-    tagSuggestion: true,
-  },
-  permissions: {
-    notifications: 'undetermined',
-    calendar: 'undetermined',
-    photos: 'undetermined',
-    contacts: 'undetermined',
-  },
-  storage: {
-    deleteMode: 'soft',
-  },
-};
-
 export const useUserStore = create<UserStore>((set, get) => ({
   preferences: null,
   loading: false,
 
   loadPreferences: async () => {
     set({ loading: true });
-    const preferences = await storage.getUserPreferences();
-    if (preferences) {
-      preferences.theme = normalizeTheme(preferences.theme);
-    }
-    set({ preferences: preferences || defaultPreferences, loading: false });
+    const preferences = normalizePreferences(await storage.getUserPreferences());
+    set({ preferences, loading: false });
   },
 
   updatePreferences: async (updates: Partial<UserPreferences>) => {
     const current = get().preferences || defaultPreferences;
-    const updated = { ...current, ...updates };
+    const updated = normalizePreferences({ ...current, ...updates });
     set({ preferences: updated });
     await storage.saveUserPreferences(updated);
   },

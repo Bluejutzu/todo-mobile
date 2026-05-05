@@ -4,7 +4,13 @@ import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../../stores/userStore';
-import { getThemeColors, getAvailableThemes, getThemeDisplayName, isDarkTheme, ThemeName, themes } from '../../theme/colors';
+import {
+  getThemeColors,
+  getAvailableThemes,
+  getThemeDisplayName,
+  ThemeName,
+  themes,
+} from '../../theme/colors';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from './OnboardingNavigator';
 
@@ -41,24 +47,26 @@ export function PreferencesScreen() {
               {getAvailableThemes().map(t => {
                 const preview = themes[t];
                 const selected = theme === t;
+                const themeCardStyle = {
+                  backgroundColor: preview.surface,
+                  borderColor: selected ? colors.primary : preview.border,
+                  borderWidth: selected ? 2 : 1,
+                };
                 return (
                   <TouchableOpacity
                     key={t}
-                    style={[
-                      styles.themeCard,
-                      {
-                        backgroundColor: preview.surface,
-                        borderColor: selected ? colors.primary : preview.border,
-                        borderWidth: selected ? 2 : 1,
-                      },
-                    ]}
+                    style={[styles.themeCard, themeCardStyle]}
                     onPress={() => handleThemeSelect(t)}
                     activeOpacity={0.7}
                   >
                     <View style={styles.themeCardContent}>
                       <View style={styles.themePreviewRow}>
-                        <View style={[styles.previewSwatch, { backgroundColor: preview.background }]} />
-                        <View style={[styles.previewSwatch, { backgroundColor: preview.primary }]} />
+                        <View
+                          style={[styles.previewSwatch, { backgroundColor: preview.background }]}
+                        />
+                        <View
+                          style={[styles.previewSwatch, { backgroundColor: preview.primary }]}
+                        />
                         <View style={[styles.previewSwatch, { backgroundColor: preview.text }]} />
                       </View>
                       <View style={styles.themeInfo}>
@@ -66,7 +74,11 @@ export function PreferencesScreen() {
                           {getThemeDisplayName(t)}
                         </Text>
                         <Text style={[styles.themeDesc, { color: preview.textSecondary }]}>
-                          {t === 'light' ? 'Warm beige palette' : t === 'dark' ? 'Easy on the eyes' : 'True black'}
+                          {t === 'light'
+                            ? 'Warm beige palette'
+                            : t === 'dark'
+                              ? 'Easy on the eyes'
+                              : 'True black'}
                         </Text>
                       </View>
                     </View>
@@ -83,7 +95,12 @@ export function PreferencesScreen() {
 
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Settings</Text>
-            <View style={[styles.option, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View
+              style={[
+                styles.option,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <View style={styles.optionTextContainer}>
                 <Text style={[styles.optionTitle, { color: colors.text }]}>Notifications</Text>
                 <Text style={[styles.optionDescription, { color: colors.textSecondary }]}>

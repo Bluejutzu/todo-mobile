@@ -16,6 +16,7 @@ export interface Todo {
   updatedAt: Date;
   completedAt?: Date;
   deletedAt?: Date;
+  externalCalendarEventId?: string;
 }
 
 export interface Subtask {

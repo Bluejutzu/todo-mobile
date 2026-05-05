@@ -4,11 +4,12 @@ import { revenueCatService } from '../services/revenuecat';
 
 export function useSubscription() {
   const store = useSubscriptionStore();
+  const resetDailyUsage = useSubscriptionStore(state => state.resetDailyUsage);
 
   useEffect(() => {
     // Check for daily reset on mount
-    store.resetDailyUsage();
-  }, []);
+    resetDailyUsage();
+  }, [resetDailyUsage]);
 
   const restorePurchases = async () => {
     try {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ViewStyle, StyleProp, StyleSheet, Platform } from 'react-native';
+import { View, ViewStyle, StyleProp, StyleSheet } from 'react-native';
 import { useUserStore } from '../../stores/userStore';
 import { getThemeColors, isDarkTheme } from '../../theme/colors';
 import { borderRadius, spacing } from '../../theme/spacing';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -16,7 +16,6 @@ import { getThemeColors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import type { Todo } from '../../types/todo';
-import { TodoActionSheet } from './TodoActionSheet';
 
 interface TodoDetailModalProps {
   visible: boolean;
@@ -35,13 +34,10 @@ export function TodoDetailModal({
   onClose,
   onEdit,
   onDelete,
-  onDuplicate,
-  onTogglePriority,
   onToggleComplete,
 }: TodoDetailModalProps) {
   const theme = useUserStore(state => state.preferences?.theme || 'dark');
   const themeColors = getThemeColors(theme);
-  const [showActionSheet, setShowActionSheet] = useState(false);
 
   if (!todo) return null;
 
@@ -115,264 +111,229 @@ export function TodoDetailModal({
   const totalSubtasks = todo.subtasks?.length || 0;
 
   return (
-    <>
-      <Modal
-        visible={visible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={onClose}
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: themeColors.background }]}
+        edges={['top']}
       >
-        <SafeAreaView
-          style={[styles.container, { backgroundColor: themeColors.background }]}
-          edges={['top']}
-        >
-          {/* Header */}
-          <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
-            <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-              <Ionicons
-                name={Platform.OS === 'ios' ? 'close' : 'arrow-back'}
-                size={24}
-                color={themeColors.text}
-              />
-            </TouchableOpacity>
+        {/* Header */}
+        <View style={[styles.header, { borderBottomColor: themeColors.border }]}>
+          <TouchableOpacity onPress={onClose} style={styles.headerButton}>
+            <Ionicons
+              name={Platform.OS === 'ios' ? 'close' : 'arrow-back'}
+              size={24}
+              color={themeColors.text}
+            />
+          </TouchableOpacity>
 
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                onPress={() => {
-                  onClose();
-                  onEdit();
-                }}
-                style={styles.headerButton}
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => {
+                onClose();
+                onEdit();
+              }}
+              style={styles.headerButton}
+            >
+              <Ionicons name="create-outline" size={24} color={themeColors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
+              <Ionicons name="share-outline" size={24} color={themeColors.text} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Content */}
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          {/* Title */}
+          <Text style={[styles.title, { color: themeColors.text }]}>{todo.title}</Text>
+
+          {/* Status Badge */}
+          <View style={styles.statusRow}>
+            <View
+              style={[
+                styles.statusBadge,
+                {
+                  backgroundColor: todo.completed
+                    ? themeColors.primary + '20'
+                    : priorityColor + '20',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusText,
+                  { color: todo.completed ? themeColors.primary : priorityColor },
+                ]}
               >
-                <Ionicons name="create-outline" size={24} color={themeColors.text} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleShare} style={styles.headerButton}>
-                <Ionicons name="share-outline" size={24} color={themeColors.text} />
-              </TouchableOpacity>
+                {todo.completed ? 'Completed' : `${todo.priority || 'medium'} Priority`}
+              </Text>
             </View>
           </View>
 
-          {/* Content */}
-          <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-            {/* Title */}
-            <Text style={[styles.title, { color: themeColors.text }]}>{todo.title}</Text>
-
-            {/* Status Badge */}
-            <View style={styles.statusRow}>
-              <View
-                style={[
-                  styles.statusBadge,
-                  {
-                    backgroundColor: todo.completed
-                      ? themeColors.primary + '20'
-                      : priorityColor + '20',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusText,
-                    { color: todo.completed ? themeColors.primary : priorityColor },
-                  ]}
-                >
-                  {todo.completed ? 'Completed' : `${todo.priority || 'medium'} Priority`}
-                </Text>
-              </View>
-
-              {/* Sync State */}
-              <View style={[styles.syncBadge, { backgroundColor: themeColors.surface }]}>
-                <Ionicons name="cloud-done-outline" size={14} color="#10b981" />
-                <Text style={[styles.syncText, { color: themeColors.textSecondary }]}>Synced</Text>
-              </View>
+          {/* Description */}
+          {todo.description && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Description</Text>
+              <Text style={[styles.description, { color: themeColors.textSecondary }]}>
+                {todo.description}
+              </Text>
             </View>
+          )}
 
-            {/* Description */}
-            {todo.description && (
-              <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Description</Text>
-                <Text style={[styles.description, { color: themeColors.textSecondary }]}>
-                  {todo.description}
-                </Text>
+          {/* Metadata Grid */}
+          <View style={styles.metadataGrid}>
+            {/* Due Date */}
+            {todo.dueDate && (
+              <View style={[styles.metadataItem, { backgroundColor: themeColors.surface }]}>
+                <Ionicons name="calendar-outline" size={20} color={themeColors.primary} />
+                <View style={styles.metadataContent}>
+                  <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>
+                    Due Date
+                  </Text>
+                  <Text style={[styles.metadataValue, { color: themeColors.text }]}>
+                    {formatDate(todo.dueDate)}
+                  </Text>
+                </View>
               </View>
             )}
 
-            {/* Metadata Grid */}
-            <View style={styles.metadataGrid}>
-              {/* Due Date */}
-              {todo.dueDate && (
-                <View style={[styles.metadataItem, { backgroundColor: themeColors.surface }]}>
-                  <Ionicons name="calendar-outline" size={20} color={themeColors.primary} />
-                  <View style={styles.metadataContent}>
-                    <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>
-                      Due Date
-                    </Text>
-                    <Text style={[styles.metadataValue, { color: themeColors.text }]}>
-                      {formatDate(todo.dueDate)}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Category */}
-              {todo.category && (
-                <View style={[styles.metadataItem, { backgroundColor: themeColors.surface }]}>
-                  <Ionicons name="pricetag-outline" size={20} color={themeColors.primary} />
-                  <View style={styles.metadataContent}>
-                    <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>
-                      Category
-                    </Text>
-                    <Text style={[styles.metadataValue, { color: themeColors.text }]}>
-                      {todo.category}
-                    </Text>
-                  </View>
-                </View>
-              )}
-            </View>
-
-            {/* Subtasks */}
-            {todo.subtasks && todo.subtasks.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHeader}>
-                  <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Subtasks</Text>
-                  <Text style={[styles.sectionBadge, { color: themeColors.textSecondary }]}>
-                    {completedSubtasks}/{totalSubtasks}
+            {/* Category */}
+            {todo.category && (
+              <View style={[styles.metadataItem, { backgroundColor: themeColors.surface }]}>
+                <Ionicons name="pricetag-outline" size={20} color={themeColors.primary} />
+                <View style={styles.metadataContent}>
+                  <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>
+                    Category
+                  </Text>
+                  <Text style={[styles.metadataValue, { color: themeColors.text }]}>
+                    {todo.category}
                   </Text>
                 </View>
-                {todo.subtasks.map((subtask, index) => (
-                  <View key={index} style={styles.subtaskItem}>
-                    <Ionicons
-                      name={subtask.completed ? 'checkmark-circle' : 'ellipse-outline'}
-                      size={20}
-                      color={subtask.completed ? themeColors.primary : themeColors.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.subtaskText,
-                        { color: themeColors.text },
-                        subtask.completed && styles.subtaskCompleted,
-                      ]}
-                    >
-                      {subtask.title}
-                    </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Subtasks */}
+          {todo.subtasks && todo.subtasks.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Subtasks</Text>
+                <Text style={[styles.sectionBadge, { color: themeColors.textSecondary }]}>
+                  {completedSubtasks}/{totalSubtasks}
+                </Text>
+              </View>
+              {todo.subtasks.map((subtask, index) => (
+                <View key={index} style={styles.subtaskItem}>
+                  <Ionicons
+                    name={subtask.completed ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={20}
+                    color={subtask.completed ? themeColors.primary : themeColors.textSecondary}
+                  />
+                  <Text
+                    style={[
+                      styles.subtaskText,
+                      { color: themeColors.text },
+                      subtask.completed && styles.subtaskCompleted,
+                    ]}
+                  >
+                    {subtask.title}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Tags */}
+          {todo.tags && todo.tags.length > 0 && (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Tags</Text>
+              <View style={styles.tagsContainer}>
+                {todo.tags.map((tag, index) => (
+                  <View
+                    key={index}
+                    style={[styles.tag, { backgroundColor: themeColors.primary + '20' }]}
+                  >
+                    <Text style={[styles.tagText, { color: themeColors.primary }]}>#{tag}</Text>
                   </View>
                 ))}
               </View>
-            )}
-
-            {/* Tags */}
-            {todo.tags && todo.tags.length > 0 && (
-              <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Tags</Text>
-                <View style={styles.tagsContainer}>
-                  {todo.tags.map((tag, index) => (
-                    <View
-                      key={index}
-                      style={[styles.tag, { backgroundColor: themeColors.primary + '20' }]}
-                    >
-                      <Text style={[styles.tagText, { color: themeColors.primary }]}>#{tag}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-
-            {/* Timestamps */}
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Information</Text>
-              <View style={styles.timestampRow}>
-                <Ionicons name="time-outline" size={16} color={themeColors.textSecondary} />
-                <Text style={[styles.timestampText, { color: themeColors.textSecondary }]}>
-                  Created {formatTimestamp(todo.createdAt)}
-                </Text>
-              </View>
-              <View style={styles.timestampRow}>
-                <Ionicons name="create-outline" size={16} color={themeColors.textSecondary} />
-                <Text style={[styles.timestampText, { color: themeColors.textSecondary }]}>
-                  Updated {formatTimestamp(todo.updatedAt)}
-                </Text>
-              </View>
-              {todo.completedAt && (
-                <View style={styles.timestampRow}>
-                  <Ionicons name="checkmark-circle-outline" size={16} color="#10b981" />
-                  <Text style={[styles.timestampText, { color: themeColors.textSecondary }]}>
-                    Completed {formatTimestamp(todo.completedAt)}
-                  </Text>
-                </View>
-              )}
             </View>
-          </ScrollView>
+          )}
 
-          {/* Footer Actions */}
-          <View style={[styles.footer, { borderTopColor: themeColors.border }]}>
-            <TouchableOpacity
+          {/* Timestamps */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Information</Text>
+            <View style={styles.timestampRow}>
+              <Ionicons name="time-outline" size={16} color={themeColors.textSecondary} />
+              <Text style={[styles.timestampText, { color: themeColors.textSecondary }]}>
+                Created {formatTimestamp(todo.createdAt)}
+              </Text>
+            </View>
+            <View style={styles.timestampRow}>
+              <Ionicons name="create-outline" size={16} color={themeColors.textSecondary} />
+              <Text style={[styles.timestampText, { color: themeColors.textSecondary }]}>
+                Updated {formatTimestamp(todo.updatedAt)}
+              </Text>
+            </View>
+            {todo.completedAt && (
+              <View style={styles.timestampRow}>
+                <Ionicons name="checkmark-circle-outline" size={16} color="#10b981" />
+                <Text style={[styles.timestampText, { color: themeColors.textSecondary }]}>
+                  Completed {formatTimestamp(todo.completedAt)}
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        {/* Footer Actions */}
+        <View style={[styles.footer, { borderTopColor: themeColors.border }]}>
+          <TouchableOpacity
+            style={[
+              styles.completeButton,
+              {
+                backgroundColor: todo.completed ? themeColors.surface : themeColors.primary,
+              },
+            ]}
+            onPress={() => {
+              onClose();
+              onToggleComplete();
+            }}
+          >
+            <Ionicons
+              name={todo.completed ? 'close-circle-outline' : 'checkmark-circle'}
+              size={24}
+              color={todo.completed ? themeColors.text : themeColors.onPrimary}
+            />
+            <Text
               style={[
-                styles.completeButton,
+                styles.completeButtonText,
                 {
-                  backgroundColor: todo.completed ? themeColors.surface : themeColors.primary,
+                  color: todo.completed ? themeColors.text : themeColors.onPrimary,
                 },
               ]}
-              onPress={() => {
-                onClose();
-                onToggleComplete();
-              }}
             >
-              <Ionicons
-                name={todo.completed ? 'close-circle-outline' : 'checkmark-circle'}
-                size={24}
-                color={todo.completed ? themeColors.text : themeColors.onPrimary}
-              />
-              <Text
-                style={[
-                  styles.completeButtonText,
-                  {
-                    color: todo.completed ? themeColors.text : themeColors.onPrimary,
-                  },
-                ]}
-              >
-                {todo.completed ? 'Mark Incomplete' : 'Mark Complete'}
-              </Text>
-            </TouchableOpacity>
+              {todo.completed ? 'Mark Incomplete' : 'Mark Complete'}
+            </Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.deleteButton, { backgroundColor: '#ef4444' + '20' }]}
-              onPress={() => {
-                onClose();
-                onDelete();
-              }}
-            >
-              <Ionicons name="trash-outline" size={20} color="#ef4444" />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Action Sheet for More Options */}
-      <TodoActionSheet
-        visible={showActionSheet}
-        todo={todo}
-        onClose={() => setShowActionSheet(false)}
-        onEdit={() => {
-          setShowActionSheet(false);
-          onEdit();
-        }}
-        onDelete={() => {
-          setShowActionSheet(false);
-          onDelete();
-        }}
-        onDuplicate={() => {
-          setShowActionSheet(false);
-          onDuplicate();
-        }}
-        onShare={() => {
-          setShowActionSheet(false);
-          handleShare();
-        }}
-        onTogglePriority={() => {
-          setShowActionSheet(false);
-          onTogglePriority();
-        }}
-      />
-    </>
+          <TouchableOpacity
+            style={[styles.deleteButton, { backgroundColor: '#ef4444' + '20' }]}
+            onPress={() => {
+              onClose();
+              onDelete();
+            }}
+          >
+            <Ionicons name="trash-outline" size={20} color="#ef4444" />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    </Modal>
   );
 }
 
@@ -421,18 +382,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
     textTransform: 'capitalize',
-  },
-  syncBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-  },
-  syncText: {
-    ...typography.caption,
-    fontSize: 11,
   },
   section: {
     marginBottom: spacing.lg,

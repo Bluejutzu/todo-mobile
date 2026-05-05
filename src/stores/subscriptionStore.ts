@@ -83,6 +83,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
       },
 
       checkLimit: (limit, value) => {
+        get().resetDailyUsage();
         const limits = get().getLimits();
         const limitValue = limits[limit];
 

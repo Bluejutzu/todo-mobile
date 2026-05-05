@@ -1,4 +1,3 @@
-import axios from 'axios';
 import Constants from 'expo-constants';
 import type { Todo, Subtask } from '../types/todo';
 import type {
@@ -8,6 +7,9 @@ import type {
   PrioritySuggestion,
   DueDateSuggestion,
 } from '../types/ai';
+import { logger } from '../lib/logger';
+import { buildTodoContext } from './ai/aiPrompts';
+import { postAIChatCompletion } from './ai/aiClient';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const DEFAULT_MODEL = 'anthropic/claude-3.5-sonnet';
@@ -58,21 +60,12 @@ class AIService {
     }
 
     try {
-      console.log('[AI Service] Sending request to OpenRouter...');
-      const response = await axios.post(
+      logger.debug('[AI Service] Sending request to OpenRouter...');
+      const response = await postAIChatCompletion(
         OPENROUTER_API_URL,
-        {
-          model: config.model || DEFAULT_MODEL,
-          messages,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://todo-mobile.app',
-            'X-Title': 'Todo Mobile App',
-          },
-        }
+        apiKey,
+        config.model || DEFAULT_MODEL,
+        messages
       );
 
       // Update usage
@@ -84,7 +77,7 @@ class AIService {
       const tokensUsed = response.data.usage?.total_tokens;
 
       if (!content) {
-        console.error('[AI Service] No content in response');
+        logger.error('[AI Service] No content in response');
         return {
           success: false,
           error: 'No response from AI',
@@ -99,7 +92,7 @@ class AIService {
           tokensUsed,
         };
       } catch {
-        console.log('[AI Service] Content is not JSON, returning as string');
+        logger.warn('[AI Service] Content is not JSON, returning as string');
         // If not JSON, return as string
         return {
           success: true,
@@ -108,7 +101,7 @@ class AIService {
         };
       }
     } catch (error: any) {
-      console.error('[AI Service] Request error:', {
+      logger.error('[AI Service] Request error:', {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status,
@@ -121,15 +114,7 @@ class AIService {
   }
 
   private buildContext(todos: Todo[]): string {
-    const categories = [...new Set(todos.map(t => t.category).filter(Boolean))];
-    const recentTodos = todos.slice(0, 10);
-
-    return `
-Context about user's todos:
-- Existing categories: ${categories.join(', ') || 'None'}
-- Recent todos: ${recentTodos.map(t => `"${t.title}" (${t.category || 'uncategorized'})`).join(', ')}
-- Total todos: ${todos.length}
-    `.trim();
+    return buildTodoContext(todos);
   }
 
   async suggestCategory(
