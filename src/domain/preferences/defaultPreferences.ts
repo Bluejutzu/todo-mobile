@@ -1,5 +1,6 @@
 import type { UserPreferences } from '../../types/user';
 import type { ThemeName } from '../../theme/colors';
+import { OPENROUTER_DEFAULT_MODEL, normalizeOpenRouterModelId } from '../../constants/aiModels';
 
 const VALID_THEMES: ThemeName[] = ['light', 'dark', 'oled'];
 
@@ -10,7 +11,7 @@ export const defaultPreferences: UserPreferences = {
   notificationsEnabled: false,
   ai: {
     provider: 'openrouter',
-    model: 'meta-llama/llama-3.3-70b-instruct:free',
+    model: OPENROUTER_DEFAULT_MODEL,
     enabled: false,
     requestCount: 0,
     totalTokensUsed: 0,
@@ -45,6 +46,7 @@ export function normalizePreferences(
     ai: {
       ...defaultPreferences.ai,
       ...preferences?.ai,
+      model: normalizeOpenRouterModelId(preferences?.ai?.model),
     },
     permissions: {
       ...defaultPreferences.permissions,

@@ -8,11 +8,12 @@ import type {
   DueDateSuggestion,
 } from '../types/ai';
 import { logger } from '../lib/logger';
+import { OPENROUTER_DEFAULT_MODEL, normalizeOpenRouterModelId } from '../constants/aiModels';
 import { buildTodoContext } from './ai/aiPrompts';
 import { postAIChatCompletion } from './ai/aiClient';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_MODEL = 'anthropic/claude-3.5-sonnet';
+const DEFAULT_MODEL = OPENROUTER_DEFAULT_MODEL;
 
 interface AIServiceConfig {
   userApiKey?: string;
@@ -64,7 +65,7 @@ class AIService {
       const response = await postAIChatCompletion(
         OPENROUTER_API_URL,
         apiKey,
-        config.model || DEFAULT_MODEL,
+        normalizeOpenRouterModelId(config.model || DEFAULT_MODEL),
         messages
       );
 

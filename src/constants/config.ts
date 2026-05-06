@@ -3,7 +3,7 @@ export const APP_VERSION = '1.0.0';
 
 // OpenRouter API configuration
 export const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-export const OPENROUTER_MODEL = 'anthropic/claude-3.5-sonnet';
+export const OPENROUTER_MODEL = 'meta-llama/llama-3.3-70b-instruct:free';
 
 // Storage keys
 export const STORAGE_KEYS = {
